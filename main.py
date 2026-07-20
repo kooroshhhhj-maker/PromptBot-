@@ -1,4 +1,6 @@
 import logging
+from flask import Flask
+import threading
 
 from stats import add_user, total_users
 from telegram import Update, ReplyKeyboardMarkup
@@ -480,6 +482,17 @@ def main():
     )
 
     print("PromptBot started 🤖")
+
+    flask_app = Flask(__name__)
+
+    @flask_app.route("/")
+    def home():
+        return "PromptBot is running!"
+
+    def run_flask():
+        flask_app.run(host="0.0.0.0", port=10000)
+
+    threading.Thread(target=run_flask).start()
 
     app.run_polling()
 
