@@ -1,7 +1,8 @@
 import logging
 import os
-from flask import Flask
-from telegram import Update
+import asyncio
+from flask import Flask, request
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -12,9 +13,9 @@ from telegram.ext import (
 
 from prompt_cleaner import clean_prompt
 from config import TELEGRAM_TOKEN
-from ai_client import ask_ai
+from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
-from database import init_db, add_user, increase_messages, get_stats
+from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language
 from vision_client import analyze_image
 from image_edit import save_user_image, edit_image
 
@@ -29,31 +30,199 @@ logger = logging.getLogger(__name__)
 chat_history = {}
 user_modes = {}
 user_edit_images = {}
-user_languages = {}
 
-def tr(user_id, fa, en):
-    if user_languages.get(user_id, "English") == "Persian":
-        return fa
-    return en
+# Telegram app (global)
+telegram_app = None
 
-MENU = [
-    ["💬 AI Chat", "🎨 Create Image"],
-    ["🖼 Analyze Image", "✨ Edit Image"],
-    ["✍️ Write Text", "🧠 Brainstorm"],
-    ["🧾 Create Prompt", "⚙️ Settings"],
-    ["🧹 Clear Memory"]
-]
+# Supported languages
+LANGUAGES = {
+    "en": "🇬🇧 English",
+    "fa": "🇮🇷 فارسی",
+    "es": "🇪🇸 Español",
+    "fr": "🇫🇷 Français",
+    "de": "🇩🇪 Deutsch",
+    "zh": "🇨🇳 中文",
+    "ar": "🇸🇦 العربية",
+    "ja": "🇯🇵 日本語"
+}
 
-def get_menu(user_id):
-    if user_languages.get(user_id, "English") == "Persian":
-        return [
-            ["💬 چت هوش مصنوعی", "🎨 ساخت تصویر"],
-            ["🖼 تحلیل تصویر", "✨ ویرایش تصویر"],
-            ["✍️ نوشتن متن", "🧠 ایده‌پردازی"],
-            ["🧾 ساخت پرامپت", "⚙️ تنظیمات"],
-            ["🧹 پاک کردن حافظه"]
-        ]
-    return MENU
+# Translations dictionary
+TRANSLATIONS = {
+    "en": {
+        "welcome": "Hello 🤖\n\nWelcome to PromptBot.\nChoose an option:",
+        "ai_chat": "💬 AI Chat",
+        "create_image": "🎨 Create Image",
+        "analyze_image": "🖼 Analyze Image",
+        "edit_image": "✨ Edit Image",
+        "write_text": "✍️ Write Text",
+        "brainstorm": "🧠 Brainstorm",
+        "create_prompt": "🧾 Create Prompt",
+        "settings": "⚙️ Settings",
+        "clear_memory": "🧹 Clear Memory",
+        "language": "🌐 Language",
+        "image_settings": "🎨 Image Settings",
+        "image_size": "📐 Image Size",
+        "style": "🎭 Style",
+        "back": "⬅️ Back",
+        "chat_mode": "💬 AI Chat mode activated.",
+        "image_desc": "🎨 Send me an image description.",
+        "image_analyze": "🖼 Send me an image. I will create a detailed AI prompt from it.",
+        "image_edit_send": "✨ Send me the image you want to edit.",
+        "image_edit_prompt": "✏️ Great! Now tell me what you want to change in the image.",
+        "text_topic": "✍️ Tell me what text you need.",
+        "ideas_topic": "🧠 Tell me your idea.",
+        "prompt_topic": "🧾 Send your topic.",
+        "memory_cleared": "🧹 Memory cleared.",
+        "settings_menu": "⚙️ Settings Menu:",
+        "choose_size": "📐 Choose image size:",
+        "choose_style": "🎭 Choose image style:",
+        "choose_language": "🌐 Choose language:",
+        "generating": "🎨 Generating image... Please wait.",
+        "editing": "🎨 Editing image... Please wait.",
+        "analyzing": "🔍 Analyzing image...",
+        "failed": "❌ Failed.",
+        "success": "✅ Success!",
+        "stats": "📊 PromptBot Statistics",
+        "users": "👥 Users",
+        "messages": "💬 Messages",
+        "status": "🟢 Status: Online",
+    },
+    "fa": {
+        "welcome": "سلام 🤖\n\nخوش‌آمدید به PromptBot.\nیک گزینه انتخاب کنید:",
+        "ai_chat": "💬 چت هوش مصنوعی",
+        "create_image": "🎨 ساخت تصویر",
+        "analyze_image": "🖼 تحلیل تصویر",
+        "edit_image": "✨ ویرایش تصویر",
+        "write_text": "✍️ نوشتن متن",
+        "brainstorm": "🧠 ایده‌پردازی",
+        "create_prompt": "🧾 ساخت پرامپت",
+        "settings": "⚙️ تنظیمات",
+        "clear_memory": "🧹 پاک کردن حافظه",
+        "language": "🌐 زبان",
+        "image_settings": "🎨 تنظیمات تصویر",
+        "image_size": "📐 اندازه تصویر",
+        "style": "🎭 سبک",
+        "back": "⬅️ بازگشت",
+        "chat_mode": "💬 حالت چت فعال شد.",
+        "image_desc": "🎨 توضیح تصویری را برای من بفرستید.",
+        "image_analyze": "🖼 یک تصویر برای من بفرستید. من یک پرامپت جزئی برای تصویر ایجاد می��کنم.",
+        "image_edit_send": "✨ تصویری را که می‌خواهید ویرایش کنید برای من بفرستید.",
+        "image_edit_prompt": "✏️ عالی! اکنون به من بگویید چه تغییری می‌خواهید ایجاد کنید.",
+        "text_topic": "✍️ به من بگویید چه متنی نیاز دارید.",
+        "ideas_topic": "🧠 ایده خود را بگویید.",
+        "prompt_topic": "🧾 موضوع خود را بفرستید.",
+        "memory_cleared": "🧹 حافظه پاک شد.",
+        "settings_menu": "⚙️ منوی تنظیمات:",
+        "choose_size": "📐 اندازه تصویر را انتخاب کنید:",
+        "choose_style": "🎭 سبک تصویر را انتخاب کنید:",
+        "choose_language": "🌐 زبان را انتخاب کنید:",
+        "generating": "🎨 ایجاد تصویر... لطفا صبر کنید.",
+        "editing": "🎨 ویرایش تصویر... لطفا صبر کنید.",
+        "analyzing": "🔍 تحلیل تصویر...",
+        "failed": "❌ ناموفق.",
+        "success": "✅ موفق!",
+        "stats": "📊 آمار PromptBot",
+        "users": "👥 کاربران",
+        "messages": "💬 پیام‌ها",
+        "status": "🟢 وضعیت: فعال",
+    },
+    "es": {
+        "welcome": "¡Hola! 🤖\n\nBienvenido a PromptBot.\nElige una opción:",
+        "ai_chat": "💬 Chat IA",
+        "create_image": "🎨 Crear Imagen",
+        "analyze_image": "🖼 Analizar Imagen",
+        "edit_image": "✨ Editar Imagen",
+        "write_text": "✍️ Escribir Texto",
+        "brainstorm": "🧠 Lluvia de Ideas",
+        "create_prompt": "🧾 Crear Prompt",
+        "settings": "⚙️ Configuración",
+        "clear_memory": "🧹 Limpiar Memoria",
+        "language": "🌐 Idioma",
+        "image_settings": "🎨 Configuración de Imagen",
+        "image_size": "📐 Tamaño de Imagen",
+        "style": "🎭 Estilo",
+        "back": "⬅️ Atrás",
+        "chat_mode": "💬 Modo de chat IA activado.",
+        "image_desc": "🎨 Envíame una descripción de imagen.",
+        "image_analyze": "🖼 Env��ame una imagen. Crearé un prompt detallado.",
+        "image_edit_send": "✨ Envíame la imagen que deseas editar.",
+        "image_edit_prompt": "✏️ ¡Excelente! Ahora dime qué cambios deseas.",
+        "text_topic": "✍️ Dime qué texto necesitas.",
+        "ideas_topic": "🧠 Cuéntame tu idea.",
+        "prompt_topic": "🧾 Envía tu tema.",
+        "memory_cleared": "🧹 Memoria limpiada.",
+        "settings_menu": "⚙️ Menú de Configuración:",
+        "choose_size": "📐 Elige tamaño de imagen:",
+        "choose_style": "🎭 Elige estilo de imagen:",
+        "choose_language": "🌐 Elige idioma:",
+        "generating": "🎨 Generando imagen... Por favor espera.",
+        "editing": "🎨 Editando imagen... Por favor espera.",
+        "analyzing": "🔍 Analizando imagen...",
+        "failed": "❌ Falló.",
+        "success": "✅ ¡Éxito!",
+        "stats": "📊 Estadísticas de PromptBot",
+        "users": "👥 Usuarios",
+        "messages": "💬 Mensajes",
+        "status": "🟢 Estado: En línea",
+    },
+    "fr": {
+        "welcome": "Bonjour 🤖\n\nBienvenue sur PromptBot.\nChoisissez une option:",
+        "ai_chat": "💬 Chat IA",
+        "create_image": "🎨 Créer une Image",
+        "analyze_image": "🖼 Analyser une Image",
+        "edit_image": "✨ Éditer une Image",
+        "write_text": "✍️ Écrire du Texte",
+        "brainstorm": "🧠 Remue-méninges",
+        "create_prompt": "🧾 Créer un Prompt",
+        "settings": "⚙️ Paramètres",
+        "clear_memory": "🧹 Effacer la Mémoire",
+        "language": "🌐 Langue",
+        "image_settings": "🎨 Paramètres d'Image",
+        "image_size": "📐 Taille d'Image",
+        "style": "🎭 Style",
+        "back": "⬅️ Retour",
+        "chat_mode": "💬 Mode chat IA activé.",
+        "image_desc": "🎨 Envoyez-moi une description d'image.",
+        "image_analyze": "🖼 Envoyez-moi une image. Je créerai un prompt détaillé.",
+        "image_edit_send": "✨ Envoyez-moi l'image que vous souhaitez éditer.",
+        "image_edit_prompt": "✏️ Excellent! Maintenant dites-moi ce que vous voulez changer.",
+        "text_topic": "✍️ Dites-moi quel texte vous avez besoin.",
+        "ideas_topic": "🧠 Racontez-moi votre idée.",
+        "prompt_topic": "🧾 Envoyez votre sujet.",
+        "memory_cleared": "🧹 Mémoire effacée.",
+        "settings_menu": "⚙️ Menu Paramètres:",
+        "choose_size": "📐 Choisissez la taille d'image:",
+        "choose_style": "🎭 Choisissez le style d'image:",
+        "choose_language": "🌐 Choisissez la langue:",
+        "generating": "🎨 Génération d'image... Veuillez patienter.",
+        "editing": "🎨 Édition d'image... Veuillez patienter.",
+        "analyzing": "🔍 Analyse d'image...",
+        "failed": "❌ Échec.",
+        "success": "✅ Succès!",
+        "stats": "📊 Statistiques de PromptBot",
+        "users": "👥 Utilisateurs",
+        "messages": "💬 Messages",
+        "status": "🟢 État: En ligne",
+    }
+}
+
+def get_text(user_id, key):
+    """Get translated text for user"""
+    lang = get_user_language(user_id)
+    if lang not in TRANSLATIONS:
+        lang = "en"
+    
+    return TRANSLATIONS[lang].get(key, TRANSLATIONS["en"].get(key, ""))
+
+def get_menu_buttons(user_id):
+    """Get menu buttons in user's language"""
+    return [
+        [get_text(user_id, "ai_chat"), get_text(user_id, "create_image")],
+        [get_text(user_id, "analyze_image"), get_text(user_id, "edit_image")],
+        [get_text(user_id, "write_text"), get_text(user_id, "brainstorm")],
+        [get_text(user_id, "create_prompt"), get_text(user_id, "settings")],
+        [get_text(user_id, "clear_memory")]
+    ]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -62,261 +231,190 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_modes[user_id] = "chat"
     chat_history[user_id] = []
     
-    from telegram import ReplyKeyboardMarkup
     keyboard = ReplyKeyboardMarkup(
-        get_menu(user_id),
+        get_menu_buttons(user_id),
         resize_keyboard=True
     )
     
     await update.message.reply_text(
-        "Hello 🤖\n\n"
-        "Welcome to PromptBot.\n"
-        "Choose an option:",
+        get_text(user_id, "welcome"),
         reply_markup=keyboard
     )
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     users, messages = get_stats()
     
-    await update.message.reply_text(
-        "📊 PromptBot Statistics\n\n"
-        f"👥 Users: {users}\n"
-        f"💬 Messages: {messages}\n"
-        "🟢 Status: Online"
+    text = get_text(user_id, "stats")
+    stats_text = (
+        f"{text}\n\n"
+        f"{get_text(user_id, 'users')}: {users}\n"
+        f"{get_text(user_id, 'messages')}: {messages}\n"
+        f"{get_text(user_id, 'status')}"
     )
+    
+    await update.message.reply_text(stats_text)
 
 async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_history[user_id] = []
     
-    await update.message.reply_text(
-        "🧹 Memory cleared."
-    )
+    await update.message.reply_text(get_text(user_id, "memory_cleared"))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text
     
-    if user_modes.get(user_id) == "waiting_edit_prompt":
-        image_path = f"user_{user_id}.png"
+    if user_id not in user_modes:
+        user_modes[user_id] = "chat"
+        chat_history[user_id] = []
+    
+    # Handle language selection
+    lang_buttons = {v: k for k, v in LANGUAGES.items()}
+    if text in lang_buttons:
+        set_user_language(user_id, lang_buttons[text])
+        await update.message.reply_text("✅ " + get_text(user_id, "language") + " " + get_text(user_id, "success"))
         
-        await update.message.reply_text(
-            "🎨 Editing image... Please wait."
+        keyboard = ReplyKeyboardMarkup(
+            get_menu_buttons(user_id),
+            resize_keyboard=True
         )
+        await update.message.reply_text(
+            get_text(user_id, "welcome"),
+            reply_markup=keyboard
+        )
+        return
+    
+    # Handle mode changes
+    menu_text = {
+        get_text(user_id, "ai_chat"): "chat",
+        get_text(user_id, "create_image"): "image",
+        get_text(user_id, "analyze_image"): "analyze_image",
+        get_text(user_id, "edit_image"): "edit_image",
+        get_text(user_id, "write_text"): "writing",
+        get_text(user_id, "brainstorm"): "ideas",
+        get_text(user_id, "create_prompt"): "prompt",
+    }
+    
+    if text in menu_text:
+        user_modes[user_id] = menu_text[text]
         
+        if text == get_text(user_id, "ai_chat"):
+            await update.message.reply_text(get_text(user_id, "chat_mode"))
+        elif text == get_text(user_id, "create_image"):
+            await update.message.reply_text(get_text(user_id, "image_desc"))
+        elif text == get_text(user_id, "analyze_image"):
+            await update.message.reply_text(get_text(user_id, "image_analyze"))
+        elif text == get_text(user_id, "edit_image"):
+            await update.message.reply_text(get_text(user_id, "image_edit_send"))
+        elif text == get_text(user_id, "write_text"):
+            await update.message.reply_text(get_text(user_id, "text_topic"))
+        elif text == get_text(user_id, "brainstorm"):
+            await update.message.reply_text(get_text(user_id, "ideas_topic"))
+        elif text == get_text(user_id, "create_prompt"):
+            await update.message.reply_text(get_text(user_id, "prompt_topic"))
+        return
+    
+    # Settings menu
+    if text == get_text(user_id, "settings"):
+        keyboard = ReplyKeyboardMarkup(
+            [
+                [get_text(user_id, "language"), get_text(user_id, "image_settings")],
+                [get_text(user_id, "back")]
+            ],
+            resize_keyboard=True
+        )
+        await update.message.reply_text(
+            get_text(user_id, "settings_menu"),
+            reply_markup=keyboard
+        )
+        return
+    
+    # Language menu
+    if text == get_text(user_id, "language"):
+        lang_buttons = [[LANGUAGES[code]] for code in LANGUAGES.keys()]
+        lang_buttons.append([get_text(user_id, "back")])
+        keyboard = ReplyKeyboardMarkup(lang_buttons, resize_keyboard=True)
+        await update.message.reply_text(
+            get_text(user_id, "choose_language"),
+            reply_markup=keyboard
+        )
+        return
+    
+    # Back to main menu
+    if text == get_text(user_id, "back"):
+        keyboard = ReplyKeyboardMarkup(
+            get_menu_buttons(user_id),
+            resize_keyboard=True
+        )
+        await update.message.reply_text(
+            get_text(user_id, "welcome"),
+            reply_markup=keyboard
+        )
+        user_modes[user_id] = "chat"
+        return
+    
+    # Clear memory
+    if text == get_text(user_id, "clear_memory"):
+        chat_history[user_id] = []
+        await update.message.reply_text(get_text(user_id, "memory_cleared"))
+        return
+    
+    # Handle waiting for edit prompt
+    if user_modes.get(user_id) == "waiting_edit_prompt":
+        await update.message.reply_text(get_text(user_id, "editing"))
+        image_path = f"user_{user_id}.png"
         result = edit_image(image_path, text)
         
         if result:
             await update.message.reply_photo(photo=result)
         else:
-            await update.message.reply_text(
-                "❌ Image editing failed."
-            )
+            await update.message.reply_text(get_text(user_id, "failed"))
         
         user_modes[user_id] = "chat"
-        return
-    
-    if user_id not in chat_history:
-        chat_history[user_id] = []
-        user_modes[user_id] = "chat"
-    
-    if text == "💬 AI Chat" or text == "💬 چت هوش مصنوعی":
-        user_modes[user_id] = "chat"
-        await update.message.reply_text(
-            "💬 AI Chat mode activated."
-        )
-        return
-    
-    if text == "🎨 Create Image" or text == "🎨 ساخت تصویر":
-        user_modes[user_id] = "image"
-        await update.message.reply_text(
-            "🎨 Send me an image description."
-        )
-        return
-    
-    if text == "🖼 Analyze Image" or text == "🖼 تحلیل تصویر":
-        user_modes[user_id] = "analyze_image"
-        await update.message.reply_text(
-            "🖼 Send me an image. I will create a detailed AI prompt from it."
-        )
-        return
-    
-    if text == "✨ Edit Image" or text == "✨ ویرایش تصویر":
-        user_modes[user_id] = "edit_image"
-        await update.message.reply_text(
-            "✨ Send me the image you want to edit."
-        )
-        return
-    
-    if text == "✍️ Write Text" or text == "✍️ نوشتن متن":
-        user_modes[user_id] = "writing"
-        await update.message.reply_text(
-            "✍️ Tell me what text you need."
-        )
-        return
-    
-    if text == "🧠 Brainstorm" or text == "🧠 ایده‌پردازی":
-        user_modes[user_id] = "ideas"
-        await update.message.reply_text(
-            "🧠 Tell me your idea."
-        )
-        return
-    
-    if text == "🧾 Create Prompt" or text == "🧾 ساخت پرامپت":
-        user_modes[user_id] = "prompt"
-        await update.message.reply_text(
-            "🧾 Send your topic."
-        )
-        return
-    
-    if text == "🧹 Clear Memory" or text == "🧹 پاک کردن حافظه":
-        chat_history[user_id] = []
-        await update.message.reply_text(
-            "🧹 Memory cleared."
-        )
-        return
-    
-    # Settings
-    if text == "⚙️ Settings" or text == "⚙️ تنظیمات":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["🌐 Language", "🎨 Image Settings"],
-                ["⬅️ Back"]
-            ],
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "⚙️ Settings Menu:",
-            reply_markup=keyboard
-        )
-        return
-    
-    if text == "🎨 Image Settings":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["📐 Image Size"],
-                ["🎭 Style"],
-                ["⬅️ Back"]
-            ],
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "🎨 Image Settings:",
-            reply_markup=keyboard
-        )
-        return
-    
-    if text == "📐 Image Size":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["512x512", "1024x1024"],
-                ["1792x1024"],
-                ["⬅️ Back"]
-            ],
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "📐 Choose image size:",
-            reply_markup=keyboard
-        )
-        return
-    
-    if text == "🎭 Style":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["Realistic", "Anime"],
-                ["Cinematic", "Fantasy"],
-                ["3D Render", "Digital Art"],
-                ["Oil Painting", "Watercolor"],
-                ["Cyberpunk", "Sci-Fi"],
-                ["Portrait", "Minimal"],
-                ["⬅️ Back"]
-            ],
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "🎭 Choose image style:",
-            reply_markup=keyboard
-        )
-        return
-    
-    if text == "🌐 Language" or text == "🌐 زبان":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["🇬🇧 English", "🇮🇷 فارسی"],
-                ["⬅️ Back"]
-            ],
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "🌐 Choose language:",
-            reply_markup=keyboard
-        )
-        return
-    
-    if text == "🇮🇷 فارسی":
-        user_languages[user_id] = "Persian"
-        await update.message.reply_text(
-            "✅ زبان روی فارسی تنظیم شد."
-        )
-        return
-    
-    if text == "🇬🇧 English":
-        user_languages[user_id] = "English"
-        await update.message.reply_text(
-            "✅ Language set to English."
-        )
-        return
-    
-    if text == "⬅️ Back":
-        from telegram import ReplyKeyboardMarkup
-        keyboard = ReplyKeyboardMarkup(
-            get_menu(user_id),
-            resize_keyboard=True
-        )
-        await update.message.reply_text(
-            "Main menu:",
-            reply_markup=keyboard
-        )
         return
     
     # Image generation
     if user_modes.get(user_id) == "image":
-        await update.message.reply_text("🎨 Generating image... Please wait.")
+        await update.message.reply_text(get_text(user_id, "generating"))
         image = generate_image(text)
         
         if image:
-            await update.message.reply_photo(
-                photo=image,
-                caption="✅ Image created!"
-            )
+            await update.message.reply_photo(photo=image, caption=get_text(user_id, "success"))
         else:
-            await update.message.reply_text(
-                "❌ Image generation failed."
-            )
+            await update.message.reply_text(get_text(user_id, "failed"))
         
         user_modes[user_id] = "chat"
         return
     
+    # Text writing
+    if user_modes.get(user_id) == "writing":
+        result = write_text(text, style="professional")
+        await update.message.reply_text(result)
+        user_modes[user_id] = "chat"
+        return
+    
+    # Brainstorming
+    if user_modes.get(user_id) == "ideas":
+        result = brainstorm_ideas(text, count=5)
+        await update.message.reply_text(result)
+        user_modes[user_id] = "chat"
+        return
+    
+    # Prompt generation
+    if user_modes.get(user_id) == "prompt":
+        result = generate_prompt(text)
+        await update.message.reply_text("🎨 " + get_text(user_id, "create_prompt") + ":\n\n" + result)
+        user_modes[user_id] = "chat"
+        return
+    
     # AI Chat
-    chat_history[user_id].append({
-        "role": "user",
-        "content": text
-    })
+    chat_history[user_id].append({"role": "user", "content": text})
     increase_messages(user_id)
     
     answer = ask_ai(chat_history[user_id])
     
-    chat_history[user_id].append({
-        "role": "assistant",
-        "content": answer
-    })
-    
+    chat_history[user_id].append({"role": "assistant", "content": answer})
     await update.message.reply_text(answer)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -329,23 +427,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         save_user_image(user_id, image_bytes)
         
-        await update.message.reply_text(
-            "✏️ Great! Now tell me what you want to change in the image."
-        )
+        await update.message.reply_text(get_text(user_id, "image_edit_prompt"))
         user_modes[user_id] = "waiting_edit_prompt"
         return
     
     if user_modes.get(user_id) != "analyze_image":
-        await update.message.reply_text(
-            "Please choose 🖼 Analyze Image first."
-        )
+        await update.message.reply_text(get_text(user_id, "image_analyze"))
         return
     
     photo = update.message.photo[-1]
     file = await photo.get_file()
     image_bytes = await file.download_as_bytearray()
     
-    await update.message.reply_text("🔍 Analyzing image...")
+    await update.message.reply_text(get_text(user_id, "analyzing"))
     
     prompt = analyze_image(image_bytes)
     prompt = clean_prompt(prompt)
@@ -362,7 +456,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ])
     
     await update.message.reply_text(
-        "🎨 Generated Prompt:\n\n" + prompt
+        "🎨 " + get_text(user_id, "create_prompt") + ":\n\n" + prompt
     )
     
     user_modes[user_id] = "chat"
@@ -370,21 +464,18 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     init_db()
     
-    # Flask app for keep-alive
     flask_app = Flask(__name__)
     
     @flask_app.route("/", methods=["GET"])
     def health_check():
         return "PromptBot is running! 🤖", 200
     
-    # Telegram app
     app = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
         .build()
     )
     
-    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
@@ -396,16 +487,13 @@ def main():
     
     logger.info("PromptBot started 🤖 (Polling Mode)")
     
-    # Start polling in a non-blocking way
     port = int(os.getenv("PORT", 5000))
     
-    # Start Flask in background
     from threading import Thread
     flask_thread = Thread(target=lambda: flask_app.run(host="0.0.0.0", port=port, debug=False))
     flask_thread.daemon = True
     flask_thread.start()
     
-    # Run polling (blocking)
     app.run_polling()
 
 if __name__ == "__main__":
