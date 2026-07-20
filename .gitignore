@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+
+test_*.py
+*_backup.py
+*_old.py
+
+flux_test.jpg
+user_*.png
+promptbot.db
+
+main_backup*.py
+main_v1.py
+test.txt
+test_output
