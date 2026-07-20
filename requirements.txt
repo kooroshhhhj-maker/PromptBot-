@@ -10,3 +10,5 @@ python-telegram-bot==22.8
 requests==2.34.2
 urllib3==2.7.0
 fal-client
+flask==3.0.0
+gunicorn==21.2.0
