@@ -2,6 +2,7 @@ import sqlite3
 
 DB_NAME = "promptbot.db"
 
+
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -10,7 +11,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
         first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        messages INTEGER DEFAULT 0
+        messages INTEGER DEFAULT 0,
+        language TEXT DEFAULT 'en'
     )
     """)
 
@@ -57,4 +59,35 @@ def get_stats():
     conn.close()
 
     return users, messages
+
+
+def get_user_language(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT language FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    result = cur.fetchone()
+    conn.close()
+
+    if result:
+        return result[0]
+
+    return "en"
+
+
+def set_user_language(user_id, language):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE users SET language=? WHERE user_id=?",
+        (language, user_id)
+    )
+
+    conn.commit()
+    conn.close()
 
