@@ -2,8 +2,8 @@ import requests
 from config import OPENROUTER_API_KEY
 
 # Free AI models from OpenRouter
-CHAT_MODEL = "meta-llama/llama-3-8b-instruct:free"
-ADVANCED_MODEL = "mistralai/mistral-7b-instruct:free"
+CHAT_MODEL = "google/gemma-3-27b-it:free"
+ADVANCED_MODEL = "google/gemma-3-27b-it:free"
 
 def ask_ai(messages):
     """Ask AI with chat history"""
