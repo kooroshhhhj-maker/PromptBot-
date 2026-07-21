@@ -8,7 +8,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # AI Models
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL = "meta-llama/llama-3-8b-instruct:free"
+MODEL = "openai/gpt-oss-20b:free"
 
 # Image Generation APIs
 CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
