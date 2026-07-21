@@ -16,11 +16,6 @@ def init_db():
     )
     """)
 
-try:
-    cur.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
-except:
-    pass
-    
     conn.commit()
     conn.close()
 
@@ -63,36 +58,6 @@ def get_stats():
 
     conn.close()
 
-def get_user_language(user_id):
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT language FROM users WHERE user_id=?",
-        (user_id,)
-    )
-
-    result = cur.fetchone()
-    conn.close()
-
-    if result and result[0]:
-        return result[0]
-
-    return "en"
-
-
-def set_user_language(user_id, language):
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-
-    cur.execute(
-        "UPDATE users SET language=? WHERE user_id=?",
-        (language, user_id)
-    )
-
-    conn.commit()
-    conn.close()
-    
     return users, messages
 
 
@@ -106,11 +71,11 @@ def get_user_language(user_id):
     )
 
     result = cur.fetchone()
+
     conn.close()
 
     if result:
         return result[0]
-
     return "en"
 
 
@@ -125,4 +90,3 @@ def set_user_language(user_id, language):
 
     conn.commit()
     conn.close()
-
