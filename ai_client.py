@@ -1,8 +1,7 @@
 import requests
 from config import OPENROUTER_API_KEY
 
-CHAT_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
-
+CHAT_MODEL = "openai/gpt-oss-20b:free"
 
 def ask_ai(messages):
     try:
