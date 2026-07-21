@@ -16,7 +16,6 @@ def save_user_image(user_id, image_bytes):
     return path
 
 def edit_image_with_ai(image_path, prompt):
-    """Edit image using FAL AI (Inpainting)"""
     try:
         print(f"🎨 FAL Inpainting: {prompt}")
         
