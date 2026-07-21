@@ -4,7 +4,7 @@ import base64
 from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
 import os
 
-from config import OPENROUTER_API_KEY, FAL_KEY, REPLICATE_API_TOKEN
+from config import OPENROUTER_API_KEY, FAL_KEY
 
 def save_user_image(user_id, image_bytes):
     """Save uploaded image"""
@@ -17,49 +17,62 @@ def save_user_image(user_id, image_bytes):
 
 def edit_image_with_ai(image_path, prompt):
     try:
-        print(f"🎨 Replicate Edit: {prompt}")
-
-        if not REPLICATE_API_TOKEN:
+        print(f"🎨 FAL Inpainting: {prompt}")
+        
+        if not FAL_KEY:
             return None
-
+        
         with open(image_path, "rb") as f:
-            image_base64 = base64.b64encode(f.read()).decode("utf-8")
-
+            image_bytes = f.read()
+        
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+        
         response = requests.post(
-            "https://api.replicate.com/v1/predictions",
-            headers={
-                "Authorization": f"Bearer {REPLICATE_API_TOKEN}",
-                "Content-Type": "application/json"
-              },
-              json={
-                  "model": "black-forest-labs/flux-kontext-pro",
-                  "input": {
-                      "image": f"data:image/png;base64,{image_base64}",
-                      "prompt": f"Edit this image realistically. Keep the same person, face, pose and composition. Only apply this change: {prompt}"
-                  }
-              },
-              timeout=120
-
+                "https://queue.fal.run/fal-ai/flux-kontext",
+            headers={"Authorization": f"Key {FAL_KEY}"},
+            json={
+                "image_url": f"data:image/png;base64,{image_base64}",
+                "prompt": f"Transform the image according to this instruction: {prompt}. Preserve the original identity, face, pose, lighting and background. Make the requested change clearly and realistically.",
+                "enable_safety_checker": True
+            },
+            timeout=120
         )
-
-        if response.status_code not in [200, 201]:
-            print(response.text)
-            return None
-
-        data = response.json()
-
-        if "output" in data:
-            img_url = data["output"]
-            img_response = requests.get(img_url)
-
-            image = BytesIO(img_response.content)
-            image.name = "edited_image.jpg"
-            image.seek(0)
-            return image
-
+        
+        if response.status_code in [200, 201]:
+            data = response.json()
+            
+            if "request_id" in data:
+                request_id = data["request_id"]
+                for _ in range(30):
+                    result = requests.get(
+                        f"https://queue.fal.run/requests/{request_id}/status",
+                        headers={"Authorization": f"Key {FAL_KEY}"}
+                    )
+                    
+                    if result.json().get("status") == "completed":
+                        output = result.json().get("output", {})
+                        if "image" in output:
+                            img_url = output["image"]["url"]
+                            img_response = requests.get(img_url)
+                            image = BytesIO(img_response.content)
+                            image.name = "edited_image.jpg"
+                            image.seek(0)
+                            return image
+                    
+                    import time
+                    time.sleep(1)
+            
+            if "image" in data:
+                img_url = data["image"]["url"]
+                img_response = requests.get(img_url)
+                image = BytesIO(img_response.content)
+                image.name = "edited_image.jpg"
+                image.seek(0)
+                return image
+                
     except Exception as e:
-        print(f"❌ Replicate Error: {e}")
-
+        print(f"❌ FAL Inpainting Error: {e}")
+    
     return None
 
 def edit_image_locally(image_path, prompt):
