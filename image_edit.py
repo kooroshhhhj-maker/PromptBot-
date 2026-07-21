@@ -28,11 +28,11 @@ def edit_image_with_ai(image_path, prompt):
         image_base64 = base64.b64encode(image_bytes).decode("utf-8")
         
         response = requests.post(
-            "https://queue.fal.run/fal-ai/flux-pro-1.1-inpainting",
+                "https://queue.fal.run/fal-ai/flux-kontext",
             headers={"Authorization": f"Key {FAL_KEY}"},
             json={
                 "image_url": f"data:image/png;base64,{image_base64}",
-                "prompt": f"Professional image editing: {prompt}",
+                "prompt": f"Transform the image according to this instruction: {prompt}. Preserve the original identity, face, pose, lighting and background. Make the requested change clearly and realistically.",
                 "enable_safety_checker": True
             },
             timeout=120
