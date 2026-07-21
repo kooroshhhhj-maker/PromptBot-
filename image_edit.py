@@ -32,7 +32,7 @@ def edit_image_with_ai(image_path, prompt):
                 "Content-Type": "application/json"
               },
               json={
-                  "model": "black-forest-labs/flux-kontext-pro",
+                  "model": "tencentarc/instruct-pix2pix",
                   "input": {
                   "image": f"data:image/png;base64,{image_base64}",
                   "prompt": f"Edit this image realistically. Keep the same person, face, pose and composition. Only apply this change: {prompt}"
