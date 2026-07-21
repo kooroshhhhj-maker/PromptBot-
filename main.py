@@ -19,7 +19,7 @@ from prompt_cleaner import clean_prompt
 from config import TELEGRAM_TOKEN
 from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
-from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language
+from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings
 from vision_client import analyze_image
 from image_edit import save_user_image, edit_image
 
@@ -346,12 +346,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     # Image settings menu
     if text == get_text(user_id, "image_settings"):
+
+        size, style = get_image_settings(user_id)
+
         await update.message.reply_text(
             f"🎨 Image Settings:\n\n"
-            f"Quality: {IMAGE_SETTINGS['quality']}\n"
-            f"Size: {IMAGE_SETTINGS['size']}\n"
-            f"Style: {IMAGE_SETTINGS['style']}"
+            f"📐 Size: {size}\n"
+            f"🎭 Style: {style}"
         )
+
         return
 
     # Back to main menu
