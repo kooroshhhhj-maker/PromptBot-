@@ -1,7 +1,8 @@
 import requests
 from config import OPENROUTER_API_KEY
+from config import MODEL
 
-CHAT_MODEL = "openai/gpt-oss-20b:free"
+CHAT_MODEL = MODEL
 
 def ask_ai(messages):
     try:
