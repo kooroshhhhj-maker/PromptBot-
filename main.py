@@ -340,7 +340,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
         return
-    
+    # Image settings menu
+    if text == get_text(user_id, "image_settings"):
+        await update.message.reply_text(
+            f"🎨 Image Settings:\n\n"
+            f"Quality: {IMAGE_SETTINGS['quality']}\n"
+            f"Size: {IMAGE_SETTINGS['size']}\n"
+            f"Style: {IMAGE_SETTINGS['style']}"
+        )
+        return
+
+    # Back to main menu
+    if text == get_text(user_id, "back"):
+        keyboard = ReplyKeyboardMarkup(
+            get_menu_buttons(user_id),
+            resize_keyboard=True
+        )
+        await update.message.reply_text(
+            get_text(user_id, "welcome"),
+            reply_markup=keyboard
+        )
+        user_modes[user_id] = "chat"
+        return
+
     # Back to main menu
     if text == get_text(user_id, "back"):
         keyboard = ReplyKeyboardMarkup(
