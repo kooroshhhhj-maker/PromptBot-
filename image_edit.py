@@ -47,6 +47,7 @@ def edit_image_with_ai(image_path, prompt):
             return None
 
         data = response.json()
+        print("REPLICATE RESULT:", data)
         print(data)
 
         if "output" in data:
