@@ -1,12 +1,10 @@
 import requests
 from config import OPENROUTER_API_KEY
 
-# Free AI models from OpenRouter
-CHAT_MODEL = "google/gemma-3-27b-it:free"
-ADVANCED_MODEL = "google/gemma-3-27b-it:free"
+CHAT_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
+
 
 def ask_ai(messages):
-    """Ask AI with chat history"""
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -22,139 +20,58 @@ def ask_ai(messages):
             },
             timeout=60
         )
-        
+
         data = response.json()
-        
+
         if "choices" in data:
             return data["choices"][0]["message"]["content"]
-        
-        return str(data)
-        
+
+        return f"❌ OpenRouter Error:\n{data}"
+
     except Exception as e:
         return f"❌ AI Error: {e}"
 
+
 def write_text(topic, style="professional"):
-    """Generate text content"""
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": f"You are an expert content writer. Write in a {style} style. Be creative and engaging."
-            },
-            {
-                "role": "user",
-                "content": f"Write compelling content about: {topic}\n\nProvide well-structured, engaging text."
-            }
-        ]
-        
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": ADVANCED_MODEL,
-                "messages": messages,
-                "temperature": 0.8,
-                "max_tokens": 2500
-            },
-            timeout=60
-        )
-        
-        data = response.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-        
-        return "❌ Failed to generate text"
-        
-    except Exception as e:
-        return f"❌ Error: {e}"
+    messages = [
+        {
+            "role": "system",
+            "content": f"You are a professional writer. Write in a {style} style."
+        },
+        {
+            "role": "user",
+            "content": topic
+        }
+    ]
+
+    return ask_ai(messages)
+
 
 def brainstorm_ideas(topic, count=5):
-    """Generate creative ideas"""
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a creative brainstorming expert. Generate innovative, unique, and actionable ideas."
-            },
-            {
-                "role": "user",
-                "content": f"Generate {count} creative ideas about: {topic}\n\nFormat: List each idea with a brief description."
-            }
-        ]
-        
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": ADVANCED_MODEL,
-                "messages": messages,
-                "temperature": 0.9,
-                "max_tokens": 2000
-            },
-            timeout=60
-        )
-        
-        data = response.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-        
-        return "❌ Failed to brainstorm"
-        
-    except Exception as e:
-        return f"❌ Error: {e}"
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a creative brainstorming assistant."
+        },
+        {
+            "role": "user",
+            "content": f"Give me {count} creative ideas about: {topic}"
+        }
+    ]
+
+    return ask_ai(messages)
+
 
 def generate_prompt(topic, style="detailed"):
-    """Generate AI image generation prompt"""
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are an expert at creating detailed, vivid AI image generation prompts. Your prompts should be specific, creative, and produce high-quality images."
-            },
-            {
-                "role": "user",
-                "content": f"""Create a professional AI image generation prompt for: {topic}
+    messages = [
+        {
+            "role": "system",
+            "content": "Create detailed AI image generation prompts."
+        },
+        {
+            "role": "user",
+            "content": f"Create an image prompt about {topic}. Style: {style}"
+        }
+    ]
 
-Style: {style}
-
-Include:
-- Subject description
-- Visual style
-- Lighting and mood
-- Camera perspective
-- Quality and detail level
-- Color palette
-
-Format as a single compelling prompt (1-2 sentences)."""
-            }
-        ]
-        
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": ADVANCED_MODEL,
-                "messages": messages,
-                "temperature": 0.8,
-                "max_tokens": 300
-            },
-            timeout=60
-        )
-        
-        data = response.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-        
-        return "❌ Failed to generate prompt"
-        
-    except Exception as e:
-        return f"❌ Error: {e}"
+    return ask_ai(messages)
