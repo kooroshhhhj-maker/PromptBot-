@@ -2,9 +2,9 @@ import sqlite3
 
 DB_NAME = "promptbot.db"
 
-
 def init_db():
     conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -19,7 +19,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
 
 def add_user(user_id):
     conn = sqlite3.connect(DB_NAME)
