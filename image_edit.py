@@ -34,9 +34,9 @@ def edit_image_with_ai(image_path, prompt):
               json={
                   "model": "black-forest-labs/flux-kontext-pro",
                   "input": {
-                      "image": f"data:image/png;base64,{image_base64}",
-                      "prompt": f"Edit this image realistically. Keep the same person, face, pose and composition. Only apply this change: {prompt}"
-                  }
+                  "image": f"data:image/png;base64,{image_base64}",
+                  "prompt": f"Edit this image realistically. Keep the same person, face, pose and composition. Only apply this change: {prompt}"
+                   }
               },
               timeout=120
 
@@ -47,6 +47,7 @@ def edit_image_with_ai(image_path, prompt):
             return None
 
         data = response.json()
+        print(data)
 
         if "output" in data:
             img_url = data["output"]
