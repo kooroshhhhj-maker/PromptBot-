@@ -101,6 +101,50 @@ def get_image_settings(user_id):
     )
 
     result = cur.fetchone()
+
+    conn.close()
+
+    if result:
+        return result[0], result[1]
+
+    return "1024x1024", "realistic"
+
+
+def set_image_size(user_id, size):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE users SET image_size=? WHERE user_id=?",
+        (size, user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def set_image_style(user_id, style):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE users SET image_style=? WHERE user_id=?",
+        (style, user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+def get_image_settings(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT image_size, image_style FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    result = cur.fetchone()
     conn.close()
 
     if result:

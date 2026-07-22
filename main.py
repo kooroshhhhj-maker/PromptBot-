@@ -19,7 +19,7 @@ from prompt_cleaner import clean_prompt
 from config import TELEGRAM_TOKEN
 from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
-from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings
+from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
 from vision_client import analyze_image
 from image_edit import save_user_image, edit_image
 
@@ -267,6 +267,7 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    increase_messages(user_id)
     text = update.message.text
     
     if user_id not in user_modes:
@@ -344,15 +345,89 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
         return
+
+    # Change image size
+    if text == "📐 Change Size":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["512x512"],
+                ["1024x1024"],
+                ["2048x2048"],
+                [get_text(user_id, "back")]
+            ],
+            resize_keyboard=True
+        )
+
+        await update.message.reply_text(
+            "📐 Choose image size:",
+            reply_markup=keyboard
+        )
+
+        return
+
+
+    # Save image size
+    if text in ["512x512", "1024x1024", "2048x2048"]:
+
+        set_image_size(user_id, text)
+
+        await update.message.reply_text(
+            f"✅ Image size changed to {text}"
+        )
+
+        return
+
+    # Change image style
+    if text == "🎭 Change Style":
+
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["realistic"],
+                ["anime"],
+                ["cinematic"],
+                [get_text(user_id, "back")]
+            ],
+            resize_keyboard=True
+        )
+
+        await update.message.reply_text(
+            "🎭 Choose image style:",
+            reply_markup=keyboard
+        )
+
+        return
+
+
+    # Save image style
+    if text in ["realistic", "anime", "cinematic"]:
+
+        set_image_style(user_id, text)
+
+        await update.message.reply_text(
+            f"✅ Image style changed to {text}"
+        )
+
+        return
     # Image settings menu
     if text == get_text(user_id, "image_settings"):
 
         size, style = get_image_settings(user_id)
 
+        keyboard = ReplyKeyboardMarkup(
+            [
+                ["📐 Change Size"],
+                ["🎭 Change Style"],
+                [get_text(user_id, "back")]
+            ],
+            resize_keyboard=True
+        )
+
         await update.message.reply_text(
             f"🎨 Image Settings:\n\n"
             f"📐 Size: {size}\n"
-            f"🎭 Style: {style}"
+            f"🎭 Style: {style}",
+            reply_markup=keyboard
         )
 
         return
@@ -448,6 +523,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    increase_messages(user_id)
     
     if user_modes.get(user_id) == "edit_image":
         photo = update.message.photo[-1]
