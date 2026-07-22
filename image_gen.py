@@ -4,6 +4,7 @@ import base64
 import random
 import time
 
+from database import get_image_settings
 from config import (
     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
     HUGGING_FACE_API_KEY, DEEPAI_API_KEY, REPLICATE_API_TOKEN
@@ -23,17 +24,17 @@ def generate_image_replicate(prompt):
         
         # Use Stable Diffusion 3 on Replicate
         import replicate
-        
+
         output = replicate.run(
-            "stability-ai/stable-diffusion-3:09faf2d46bbd2e38495dbe49b2d1fb65b11a42b88c924bfe47f47e4450849266",
-            input={
-                "prompt": prompt,
-                "num_outputs": 1,
-                "height": 1024,
-                "width": 1024,
-                "num_inference_steps": 50
-            }
-        )
+    "stability-ai/stable-diffusion-3:09faf2d46bbd2e38495dbe49b2d1fb65b11a42b88c924bfe47f47e4450849266",
+    input={
+        "prompt": f"{prompt}, style: realistic",
+        "num_outputs": 1,
+        "height": 1024,
+        "width": 1024,
+        "num_inference_steps": 50
+    }
+)
         
         if output and len(output) > 0:
             img_url = output[0]

@@ -465,10 +465,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Handle waiting for edit prompt
-    if user_modes.get(user_id) == "waiting_edit_prompt":
-        await update.message.reply_text(get_text(user_id, "editing"))
-        image_path = f"user_{user_id}.png"
-        result = edit_image(image_path, text)
+if user_modes.get(user_id) == "image":
+    await update.message.reply_text(get_text(user_id, "generating"))
+
+    size, style = get_image_settings(user_id)
+
+    final_prompt = f"{text}, style: {style}, size: {size}"
+
+    image = generate_image(final_prompt)
         
         if result:
             await update.message.reply_photo(photo=result)
