@@ -269,7 +269,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     increase_messages(user_id)
     text = update.message.text
-    image_temp = context.user_data
     
     if user_id not in user_modes:
         user_modes[user_id] = "chat"
@@ -410,52 +409,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         return
-
-    # Waiting for image style
-    if user_modes.get(user_id) == "image_wait_style":
-        image_temp["prompt"] = text
-
-        keyboard = ReplyKeyboardMarkup(
-            [
-                ["realistic"],
-                ["anime"],
-                ["cinematic"],
-                [get_text(user_id, "back")]
-            ],
-            resize_keyboard=True
-        )
-
-        await update.message.reply_text(
-            "🎭 Select image style:",
-            reply_markup=keyboard
-        )
-
-        user_modes[user_id] = "image_wait_style_choice"
-        return
-    # Style selected
-    if user_modes.get(user_id) == "image_wait_style_choice":
-        image_temp["style"] = text
-
-        size, _ = get_image_settings(user_id)
-
-        await update.message.reply_text(
-            get_text(user_id, "generating")
-        )
-
-        image = generate_image(
-            image_temp["prompt"],
-            style=image_temp["style"],
-            size=size
-        )
-
-        if image:
-            await update.message.reply_photo(photo=image)
-        else:
-            await update.message.reply_text(get_text(user_id, "failed"))
-
-        user_modes[user_id] = "chat"
-        return
-
     # Image settings menu
     if text == get_text(user_id, "image_settings"):
 
@@ -510,27 +463,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_history[user_id] = []
         await update.message.reply_text(get_text(user_id, "memory_cleared"))
         return
-
+    
     # Handle waiting for edit prompt
-    if user_modes.get(user_id) == "waiting_edit_prompt":
-        await update.message.reply_text(get_text(user_id, "editing"))
-        image_path = f"user_{user_id}.png"
-        result = edit_image(image_path, text)
+if user_modes.get(user_id) == "waiting_edit_prompt":
+    await update.message.reply_text(get_text(user_id, "editing"))
+    image_path = f"user_{user_id}.png"
+    result = edit_image(image_path, text)
 
-        if result:
-            await update.message.reply_photo(photo=result)
-        else:
-            await update.message.reply_text(get_text(user_id, "failed"))
+    if result:
+        await update.message.reply_photo(photo=result)
+    else:
+        await update.message.reply_text(get_text(user_id, "failed"))
 
-        user_modes[user_id] = "chat"
-        return
+    user_modes[user_id] = "chat"
+    return
     
     # Image generation
     if user_modes.get(user_id) == "image":
-        user_modes[user_id] = "image_wait_style"
         await update.message.reply_text(get_text(user_id, "generating"))
-        size, style = get_image_settings(user_id)
-        image = generate_image(text, style=style, size=size)
+        image = generate_image(text)
         
         if image:
             await update.message.reply_photo(photo=image, caption=get_text(user_id, "success"))

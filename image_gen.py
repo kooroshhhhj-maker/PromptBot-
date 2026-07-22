@@ -30,8 +30,8 @@ def generate_image_replicate(prompt):
     input={
         "prompt": f"{prompt}, style: realistic",
         "num_outputs": 1,
-        "height": 1024,
-        "width": 1024,
+        "height": height,
+        "width": width,
         "num_inference_steps": 50
     }
 )
@@ -208,10 +208,24 @@ def enhance_prompt(prompt):
     enhanced = f"{prompt}, {quality} {style}, aesthetic, beautiful"
     return enhanced
 
-def generate_image(prompt, engine="auto"):
+def generate_image(prompt, style="realistic", size="1024x1024", engine="auto"):
     """Generate image using best available engine with fallback"""
     
     # Enhance prompt
+    # Convert size to width/height
+    if size == "512x512":
+        width, height = 512, 512
+    elif size == "768x768":
+        width, height = 768, 768
+    elif size == "1024x1024":
+        width, height = 1024, 1024
+    elif size == "1536x1536":
+        width, height = 1536, 1536
+    elif size == "2048x2048":
+        width, height = 2048, 2048
+    else:
+        width, height = 1024, 1024
+
     enhanced_prompt = enhance_prompt(prompt)
     print(f"📝 Enhanced: {enhanced_prompt}")
     
