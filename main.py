@@ -266,6 +266,7 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(get_text(user_id, "memory_cleared"))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("HANDLE_MESSAGE CALLED")
     if update.message.animation:
         print("GIF RECEIVED (animation)")
         await update.message.reply_text("🎞 GIF detected!")
