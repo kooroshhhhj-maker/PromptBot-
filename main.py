@@ -21,6 +21,7 @@ from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
 from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
 from vision_client import analyze_image
+from gif_analyzer import extract_gif_frame
 from image_edit import save_user_image, edit_image
 
 # Logging setup
@@ -626,6 +627,32 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user_modes[user_id] = "chat"
 
+async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    gif_file = await update.message.animation.get_file()
+
+    gif_bytes = await gif_file.download_as_bytearray()
+
+    image_bytes = extract_gif_frame(gif_bytes)
+
+    await update.message.reply_text("🔍 دارم GIF رو تحلیل می‌کنم...")
+
+    result = analyze_image(image_bytes)
+
+    answer = ask_ai([
+        {
+            "role": "system",
+            "content": "Analyze this GIF frame and describe what is happening. Answer naturally."
+        },
+        {
+            "role": "user",
+            "content": result
+        }
+    ])
+
+    await update.message.reply_text(answer)
+
 def main():
     init_db()
     
@@ -645,7 +672,7 @@ def main():
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.ANIMATION, handle_message))
+    app.add_handler(MessageHandler(filters.ANIMATION, handle_gif))
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_message
