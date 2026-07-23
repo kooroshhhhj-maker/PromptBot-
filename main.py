@@ -272,7 +272,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if update.message.document:
-        print(update.message.document.mime_type)
+        print("DOCUMENT:", update.message.document.mime_type)
     user_id = update.effective_user.id
     increase_messages(user_id)
     text = update.message.text
