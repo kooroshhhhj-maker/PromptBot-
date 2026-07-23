@@ -266,6 +266,9 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(get_text(user_id, "memory_cleared"))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.animation:
+        await update.message.reply_text("🤣 GIF گرفتم! هنوز تحلیلش رو یاد نگرفتم")
+        return
     print("HANDLE_MESSAGE CALLED")
     if update.message.animation:
         print("GIF RECEIVED (animation)")
@@ -642,6 +645,7 @@ def main():
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.ANIMATION, handle_message))
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_message
