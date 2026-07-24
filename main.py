@@ -624,71 +624,81 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎨 " + get_text(user_id, "create_prompt") + ":\n\n" + prompt
     )
-    
-    user_modes[user_id] = "chat"
+
 
 async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    gif_file = await update.message.animation.get_file()
-
-    gif_bytes = await gif_file.download_as_bytearray()
-
-    frames = extract_gif_frames(gif_bytes)
-
-    await update.message.reply_text("✅ فریم‌های GIF استخراج شدند")
-
-    await update.message.reply_text("🔍 دارم GIF رو تحلیل می‌کنم...")
-
-    results = []
-
-    for i, frame in enumerate(frames):
-           print(f"FRAME {i+1} START")
-
-           frame.seek(0)
-           frame_bytes = frame.read()
-
-    print(f"FRAME {i+1} SIZE:", len(frame_bytes))
-
-    print(f"FRAME {i+1} SENDING TO VISION API")
-
-    print(f"FRAME {i+1} SENDING TO VISION API")
-
     try:
-       result = analyze_image(frame_bytes)
+        gif_file = await update.message.animation.get_file()
+
+        gif_bytes = await gif_file.download_as_bytearray()
+
+        frames = extract_gif_frames(gif_bytes)
+
+        await update.message.reply_text(
+            "✅ فریم‌های GIF استخراج شدند"
+        )
+
+        await update.message.reply_text(
+            "🔍 دارم GIF رو تحلیل می‌کنم..."
+        )
+
+        results = []
+
+        for i, frame in enumerate(frames):
+
+            print(f"FRAME {i+1} START")
+
+            frame.seek(0)
+            frame_bytes = frame.read()
+
+            print(
+                f"FRAME {i+1} SIZE:",
+                len(frame_bytes)
+            )
+
+            try:
+                result = analyze_image(frame_bytes)
+
+            except Exception as e:
+                print("VISION ERROR:", e)
+                result = f"Vision error: {e}"
+
+            print(f"FRAME {i+1} DONE")
+
+            results.append(result)
+
+
+        combined = "\n\n".join(results)
+
+        answer = ask_ai([
+            {
+                "role": "system",
+                "content": 
+                "Analyze this GIF. Combine the frames and explain what is happening."
+            },
+            {
+                "role": "user",
+                "content": combined
+            }
+        ])
+
+        await update.message.reply_text(
+            "✅ تحلیل تصویر تمام شد"
+        )
+
+        await update.message.reply_text(
+            answer
+        )
+
     except Exception as e:
-           print("VISION ERROR:", e)
+        print("GIF ERROR:", e)
+        await update.message.reply_text(
+            f"❌ خطا در تحلیل GIF:\n{e}"
+        )
 
-    result = f"Vision error: {e}"
-
-    print(f"FRAME {i+1} DONE")
-
-    print(f"FRAME {i+1} DONE")
-
-    print(f"FRAME {i+1} DONE")
-
-    results.append(result)
-
-    print(f"END FRAME {i}")
-
-    results.append(result)
-
-    combined = "\n\n".join(results)
-
-    result = combined
-
-    await update.message.reply_text("✅ تحلیل تصویر تمام شد")
-
-    answer = ask_ai([
-        {
-            "role": "system",
-            "content": "Analyze this GIF frame and describe what is happening. Answer naturally."
-        },
-        {
-            "role": "user",
-            "content": result
-        }
-    ])
+    user_modes[user_id] = "chat"
 
     await update.message.reply_text(answer)
 
@@ -730,3 +740,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
