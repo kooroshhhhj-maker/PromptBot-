@@ -640,6 +640,9 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("🔍 دارم GIF رو تحلیل می‌کنم...")
 
+    image_bytes.seek(0)
+    image_bytes = image_bytes.read()
+
     result = analyze_image(image_bytes)
 
     await update.message.reply_text("✅ تحلیل تصویر تمام شد")
