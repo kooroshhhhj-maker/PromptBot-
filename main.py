@@ -700,8 +700,6 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_modes[user_id] = "chat"
 
-    await update.message.reply_text(answer)
-
 def main():
     init_db()
     
