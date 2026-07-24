@@ -15,4 +15,4 @@ gunicorn==21.2.0
 Pillow
 pillow
 opencv-python-headless
-
+pytesseract
