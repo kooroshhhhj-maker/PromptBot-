@@ -12,7 +12,9 @@ def analyze_image(image_bytes):
         image_bytes
     ).decode("utf-8")
 
-    response = requests.post(
+print("VISION REQUEST START")
+    
+response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -38,11 +40,14 @@ def analyze_image(image_bytes):
                 }
             ]
         },
-        timeout=60
+    )    timeout=60
     )
+
+print("VISION REQUEST FINISHED")
 
     try:
         data = response.json()
+        print(data)
     except Exception as e:
         return f"Vision API Error: {e}\n{response.text}"
 
