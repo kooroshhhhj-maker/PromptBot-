@@ -642,6 +642,8 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = analyze_image(image_bytes)
 
+    await update.message.reply_text("✅ تحلیل تصویر تمام شد")
+
     answer = ask_ai([
         {
             "role": "system",
