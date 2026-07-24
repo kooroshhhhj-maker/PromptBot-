@@ -636,6 +636,8 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     image_bytes = extract_gif_frame(gif_bytes)
 
+    await update.message.reply_text("✅ فریم GIF استخراج شد")
+
     await update.message.reply_text("🔍 دارم GIF رو تحلیل می‌کنم...")
 
     result = analyze_image(image_bytes)
