@@ -1,5 +1,7 @@
 import requests
 import base64
+from PIL import Image
+from io import BytesIO
 
 from config import OPENROUTER_API_KEY
 
@@ -7,7 +9,17 @@ VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 
 def analyze_image(image_bytes):
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    image = Image.open(image_bytes)
+
+    image.thumbnail((768, 768))
+
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=85)
+
+    image_base64 = base64.b64encode(
+        buffer.getvalue()
+    ).decode("utf-8")
 
     print("VISION REQUEST START")
 
