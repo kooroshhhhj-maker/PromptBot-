@@ -1,4 +1,4 @@
-	mport requests
+import requests
 import base64
 
 from config import OPENROUTER_API_KEY
