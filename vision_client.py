@@ -10,7 +10,7 @@ VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 def analyze_image(image_bytes):
 
-    image = Image.open(image_bytes)
+    image = Image.open(BytesIO(image_bytes))
 
     image.thumbnail((768, 768))
 
@@ -50,7 +50,7 @@ def analyze_image(image_bytes):
                     }
                 ],
             },
-            timeout=60,
+            timeout=30
         )
 
         print("VISION REQUEST FINISHED")
