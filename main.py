@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 chat_history = {}
 user_modes = {}
 user_edit_images = {}
+image_analysis_types = {}
 
 # Telegram app (global)
 telegram_app = None
@@ -306,16 +307,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-        # Handle mode changes
+    # Handle mode changes
     menu_text = {
         get_text(user_id, "ai_chat"): "chat",
         get_text(user_id, "create_image"): "image",
         get_text(user_id, "analyze_image"): "analyze_image",
-        "🔬 Microscope": "microscope",
-        "🧪 Laboratory": "laboratory",
-        "💊 Prescription": "prescription",
-        "📄 Document": "document",
-        "📊 Chart": "chart",
         get_text(user_id, "edit_image"): "edit_image",
         get_text(user_id, "write_text"): "writing",
         get_text(user_id, "brainstorm"): "ideas",
@@ -325,23 +321,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in menu_text:
         user_modes[user_id] = menu_text[text]
 
-        if menu_text[text] in [
-            "microscope",
-            "laboratory",
-            "prescription",
-            "document",
-            "chart"
-        ]:
-            await update.message.reply_text(
-                "✅ Mode selected. Now send the image."
-            )
-            return
-
         if text == get_text(user_id, "ai_chat"):
-            await update.message.reply_text(get_text(user_id, "chat_mode"))
+            await update.message.reply_text(
+                get_text(user_id, "chat_mode")
+            )
 
         elif text == get_text(user_id, "create_image"):
-            await update.message.reply_text(get_text(user_id, "image_desc"))
+            await update.message.reply_text(
+                get_text(user_id, "image_desc")
+            )
 
         elif text == get_text(user_id, "analyze_image"):
             keyboard = [
@@ -360,18 +348,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     resize_keyboard=True
                 )
             )
-
-        elif text == get_text(user_id, "edit_image"):
-            await update.message.reply_text(get_text(user_id, "image_edit_send"))
-
-        elif text == get_text(user_id, "write_text"):
-            await update.message.reply_text(get_text(user_id, "text_topic"))
-
-        elif text == get_text(user_id, "brainstorm"):
-            await update.message.reply_text(get_text(user_id, "ideas_topic"))
-
-        elif text == get_text(user_id, "create_prompt"):
-            await update.message.reply_text(get_text(user_id, "prompt_topic"))
 
         return
     
