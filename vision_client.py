@@ -2,6 +2,7 @@ import requests
 import base64
 from PIL import Image
 from io import BytesIO
+from ocr import extract_text
 
 from config import OPENROUTER_API_KEY
 
@@ -11,6 +12,10 @@ VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 def analyze_image(image_bytes):
 
     image = Image.open(BytesIO(image_bytes))
+    ocr_text = extract_text(image_bytes)
+
+    print("OCR TEXT:")
+    print(ocr_text)
 
     image.thumbnail((768, 768))
 
@@ -38,7 +43,14 @@ def analyze_image(image_bytes):
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Analyze this image and describe what is happening.",
+                                "text": f"""Analyze this image carefully.
+
+                                 OCR text found:
+                                 ----------------
+                                 {ocr_text}
+
+                                 Use both the image and the OCR text to understand the image accurately.
+                                """,
                             },
                             {
                                 "type": "image_url",
