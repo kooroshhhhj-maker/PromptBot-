@@ -647,6 +647,7 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         frame_bytes = frame.read()
 
     result = analyze_image(frame_bytes)
+    print("ONE FRAME ANALYZED")    
     results.append(result)
 
     combined = "\n\n".join(results)
