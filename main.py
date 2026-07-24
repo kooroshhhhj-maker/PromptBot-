@@ -650,7 +650,20 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     print(f"FRAME {i+1} SIZE:", len(frame_bytes))
 
-    result = analyze_image(frame_bytes)
+    print(f"FRAME {i+1} SENDING TO VISION API")
+
+    print(f"FRAME {i+1} SENDING TO VISION API")
+
+    try:
+       result = analyze_image(frame_bytes)
+    except Exception as e:
+           print("VISION ERROR:", e)
+
+    result = f"Vision error: {e}"
+
+    print(f"FRAME {i+1} DONE")
+
+    print(f"FRAME {i+1} DONE")
 
     print(f"FRAME {i+1} DONE")
 
