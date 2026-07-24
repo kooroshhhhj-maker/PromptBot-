@@ -21,7 +21,7 @@ from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
 from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
 from vision_client import analyze_image
-from gif_analyzer import extract_gif_frame
+from gif_analyzer import extract_gif_frames
 from image_edit import save_user_image, edit_image
 
 # Logging setup
@@ -634,16 +634,24 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     gif_bytes = await gif_file.download_as_bytearray()
 
-    image_bytes = extract_gif_frame(gif_bytes)
+    frames = extract_gif_frames(gif_bytes)
 
-    await update.message.reply_text("✅ فریم GIF استخراج شد")
+    await update.message.reply_text("✅ فریم‌های GIF استخراج شدند")
 
     await update.message.reply_text("🔍 دارم GIF رو تحلیل می‌کنم...")
 
-    image_bytes.seek(0)
-    image_bytes = image_bytes.read()
+    results = []
 
-    result = analyze_image(image_bytes)
+    for frame in frames:
+        frame.seek(0)
+        frame_bytes = frame.read()
+
+    result = analyze_image(frame_bytes)
+    results.append(result)
+
+    combined = "\n\n".join(results)
+
+    result = combined
 
     await update.message.reply_text("✅ تحلیل تصویر تمام شد")
 
