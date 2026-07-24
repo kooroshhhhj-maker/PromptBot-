@@ -22,6 +22,7 @@ from image_gen import generate_image
 from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
 from vision_client import analyze_image
 from gif_analyzer import extract_gif_frames
+from gif_response import make_gif_reply
 from image_edit import save_user_image, edit_image
 
 # Logging setup
@@ -672,25 +673,9 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         combined = "\n\n".join(results)
 
-        answer = ask_ai([
-            {
-                "role": "system",
-                "content": 
-                "Analyze this GIF. Combine the frames and explain what is happening."
-            },
-            {
-                "role": "user",
-                "content": combined
-            }
-        ])
+        answer = make_gif_reply(combined)
 
-        await update.message.reply_text(
-            "✅ تحلیل تصویر تمام شد"
-        )
-
-        await update.message.reply_text(
-            answer
-        )
+        await update.message.reply_text(answer)
 
     except Exception as e:
         print("GIF ERROR:", e)
