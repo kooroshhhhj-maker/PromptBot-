@@ -24,6 +24,8 @@ from vision_client import analyze_image
 from gif_analyzer import extract_gif_frames
 from gif_response import make_gif_reply
 from image_edit import save_user_image, edit_image
+from image_understanding import detect_image_type
+from vision_router import route_image
 
 # Logging setup
 logging.basicConfig(
@@ -608,8 +610,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(get_text(user_id, "analyzing"))
     
-    prompt = analyze_image(image_bytes)
-    prompt = clean_prompt(prompt)
+    analysis = analyze_image(image_bytes)
+
+    image_info = detect_image_type(analysis)
+
+    answer = route_image(
+    image_info["type"],
+    analysis
+     )
     
     prompt = ask_ai([
         {
