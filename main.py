@@ -625,7 +625,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(get_text(user_id, "analyzing"))
     
-    analysis = analyze_image(image_bytes)
+    analysis_type = image_analysis_types.get(user_id, "general")
+
+    analysis = analyze_image(
+    image_bytes,
+    analysis_type
+     )
 
     image_info = detect_image_type(analysis)
 

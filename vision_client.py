@@ -5,6 +5,7 @@ from io import BytesIO
 
 from ocr import extract_text
 from config import OPENROUTER_API_KEY
+from image_analysis_prompts import get_analysis_prompt
 
 
 VISION_MODELS = [
@@ -13,7 +14,7 @@ VISION_MODELS = [
 ]
 
 
-def analyze_image(image_bytes):
+def analyze_image(image_bytes, analysis_type="general"):
 
     image = Image.open(BytesIO(image_bytes))
 
@@ -37,7 +38,6 @@ def analyze_image(image_bytes):
         print("VISION MODEL TRY:", model)
 
         try:
-
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
 
@@ -58,13 +58,15 @@ def analyze_image(image_bytes):
                                     "type": "text",
 
                                     "text": f"""
-Analyze this image carefully.
+{get_analysis_prompt(analysis_type)}
 
 OCR text:
 ----------------
 {ocr_text}
 
-Describe the image accurately.
+Analyze the image carefully.
+
+After analysis, create a professional AI image generation prompt based on this image.
 """
                                 },
 
@@ -101,8 +103,8 @@ Describe the image accurately.
 
         except Exception as e:
 
-            print("MODEL ERROR:", e)
+            print("VISION ERROR:", e)
 
 
-    return "❌ هیچ مدل بینایی پاسخ نداد."
 
+    return "❌ All vision models failed."
