@@ -642,13 +642,18 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     results = []
 
-    for frame in frames:
-        frame.seek(0)
-        frame_bytes = frame.read()
+    for i, frame in enumerate(frames):
+           print(f"START FRAME {i+1}")
+
+           frame.seek(0)
+           frame_bytes = frame.read()
+
+    print(f"SENDING FRAME {i+1} TO VISION")
 
     result = analyze_image(frame_bytes)
 
-    print("ONE FRAME ANALYZED")
+    print(f"FRAME {i+1} DONE")
+
     results.append(result)
 
     combined = "\n\n".join(results)
