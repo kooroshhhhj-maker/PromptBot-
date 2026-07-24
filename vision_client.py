@@ -7,9 +7,8 @@ from ocr import extract_text
 from config import OPENROUTER_API_KEY
 from image_analysis_prompts import get_analysis_prompt
 
-
 VISION_MODELS = [
-    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-3-27b-it:free",
     "qwen/qwen2.5-vl-32b-instruct:free"
 ]
 

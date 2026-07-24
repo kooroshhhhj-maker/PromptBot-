@@ -510,7 +510,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Back to main menu
-    if text == get_text(user_id, "back"):
+    if text == get_text(user_id, "back") or text == "🔙 Back":
         keyboard = ReplyKeyboardMarkup(
             get_menu_buttons(user_id),
             resize_keyboard=True
@@ -523,7 +523,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Back to main menu
-    if text == get_text(user_id, "back"):
+    if text == get_text(user_id, "back") or text == "🔙 Back":
         keyboard = ReplyKeyboardMarkup(
             get_menu_buttons(user_id),
             resize_keyboard=True
