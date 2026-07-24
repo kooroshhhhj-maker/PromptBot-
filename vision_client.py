@@ -43,10 +43,13 @@ def analyze_image(image_bytes):
     )
 
 
+try:
     data = response.json()
+except Exception as e:
+    return f"Vision API Error: {e}\n{response.text}"
 
 
-    if "choices" in data:
-        return data["choices"][0]["message"]["content"]
+if "choices" in data:
+    return data["choices"][0]["message"]["content"]
 
-    return str(data)
+return str(data)
