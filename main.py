@@ -478,8 +478,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             size=size
         )
 
-        if image:
-            await update.message.reply_photo(photo=image)
+     if image:
+        image.seek(0)
+        image.name = "generated_image.jpg"
+
+            await update.message.reply_photo(
+                  photo=image,
+                  caption=get_text(user_id, "success")
+           )
+
         else:
             await update.message.reply_text(get_text(user_id, "failed"))
 
@@ -561,6 +568,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_text(user_id, "generating"))
         size, style = get_image_settings(user_id)
         image = generate_image(text, style=style, size=size)
+
+    if image:
+       print("IMAGE READY:", image.name, image.getbuffer().nbytes)
+       image.seek(0)
         
         if image:
             await update.message.reply_photo(photo=image, caption=get_text(user_id, "success"))
