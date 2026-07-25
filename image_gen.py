@@ -15,39 +15,79 @@ HF_TEXT_TO_IMAGE_MODEL = "https://api-inference.huggingface.co/models/stabilitya
 HF_SDXL_MODEL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl"
 
 def generate_image_replicate(prompt):
-    """Generate image using Replicate (Best Quality)"""
+    """Generate image using Replicate FLUX Schnell"""
     try:
-        print("🚀 Replicate: Generating image...", prompt[:50])
-        
+        print("🚀 Replicate API: Generating image...", prompt[:50])
+
         if not REPLICATE_API_TOKEN:
             return None
-        
-        # Use Stable Diffusion 3 on Replicate
-        import replicate
 
-        output = replicate.run(
-    "stability-ai/stable-diffusion-3:09faf2d46bbd2e38495dbe49b2d1fb65b11a42b88c924bfe47f47e4450849266",
-    input={
-        "prompt": f"{prompt}, style: realistic",
-        "num_outputs": 1,
-        "height": height,
-        "width": width,
-        "num_inference_steps": 50
-    }
-)
-        
-        if output and len(output) > 0:
-            img_url = output[0]
-            img_response = requests.get(img_url, timeout=30)
-            image = BytesIO(img_response.content)
-            image.name = "image.jpg"
-            image.seek(0)
-            return image
-            
+        headers = {
+            "Authorization": f"Token {REPLICATE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "version": "c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
+            "input": {
+                "prompt": prompt,
+                "go_fast": True,
+                "num_outputs": 1,
+                "aspect_ratio": "1:1",
+                "output_format": "jpg",
+                "output_quality": 90
+            }
+        }
+
+        response = requests.post(
+            "https://api.replicate.com/v1/predictions",
+            headers=headers,
+            json=data,
+            timeout=120
+        )
+
+        result = response.json()
+
+        if response.status_code != 201:
+            print("❌ Replicate Start Error:", result)
+            return None
+
+        prediction_url = result["urls"]["get"]
+
+        # انتظار تا آماده شدن عکس
+        for _ in range(60):
+            time.sleep(2)
+
+            check = requests.get(
+                prediction_url,
+                headers=headers,
+                timeout=30
+            ).json()
+
+            if check.get("status") == "succeeded":
+                img_url = check["output"][0]
+
+                img_response = requests.get(
+                    img_url,
+                    timeout=60
+                )
+
+                image = BytesIO(img_response.content)
+                image.name = "image.jpg"
+                image.seek(0)
+
+                return image
+
+            if check.get("status") == "failed":
+                print("❌ Replicate Failed:", check)
+                return None
+
+        print("❌ Replicate Timeout")
+        return None
+
     except Exception as e:
-        print(f"❌ Replicate Error: {e}")
-    
-    return None
+        print("❌ Replicate Error:", e)
+        return None
 
 def generate_image_deepai(prompt):
     """Generate image using DeepAI"""
@@ -231,12 +271,10 @@ def generate_image(prompt, style="realistic", size="1024x1024", engine="auto"):
     
     # Order of preference
     engines = [
-        ("replicate", generate_image_replicate),
-        ("deepai", generate_image_deepai),
-        ("huggingface", generate_image_huggingface),
-        ("cloudflare", generate_image_cloudflare),
+    ("cloudflare", generate_image_cloudflare),
+    ("deepai", generate_image_deepai),
     ]
-    
+
     if engine != "auto":
         for name, func in engines:
             if name == engine:
@@ -255,3 +293,4 @@ def generate_image(prompt, style="realistic", size="1024x1024", engine="auto"):
     
     print("❌ All engines failed!")
     return None
+
