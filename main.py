@@ -676,6 +676,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         CLOUDFLARE_ACCOUNT_ID
     )
 
+    print("VISION RESULT:")
+    print(analysis)
+
+    await update.message.reply_text(
+        "✅ Analysis done:\n\n" + str(analysis)
+    )
+
+    return
+
     print("VISION FINISHED")
     print(analysis)
 
