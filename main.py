@@ -16,7 +16,7 @@ from telegram.ext import (
 )
 
 from prompt_cleaner import clean_prompt
-from config import TELEGRAM_TOKEN
+from config import TELEGRAM_TOKEN, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
 from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
@@ -235,6 +235,7 @@ def get_menu_buttons(user_id):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    print("PHOTO USER:", user_id)    
     add_user(user_id)
     
     user_modes[user_id] = "chat"
@@ -665,17 +666,24 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     analysis_type = image_analysis_types.get(user_id, "general")
 
+    print("STARTING VISION")
+
     analysis = analyze_image(
-    image_bytes,
-    analysis_type
-     )
+        image_bytes,
+        CLOUDFLARE_API_TOKEN,
+        CLOUDFLARE_ACCOUNT_ID
+    )
+
+    if not analysis:
+        await update.message.reply_text("❌ Image analysis failed")
+        return
 
     image_info = detect_image_type(analysis)
 
     answer = route_image(
-    image_info["type"],
-    analysis
-     )
+        image_info["type"],
+        analysis
+         )
     
     prompt = ask_ai([
         {
