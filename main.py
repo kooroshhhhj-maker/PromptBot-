@@ -339,6 +339,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ["💊 Prescription"],
                 ["📄 Document"],
                 ["📊 Chart"],
+                ["🪄 Prompt Generator"],
                 ["🔙 Back"]
             ]
 
