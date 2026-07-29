@@ -1,53 +1,25 @@
-import io
-# import cv2
 from PIL import Image
+from io import BytesIO
 
 
-def extract_gif_frames(video_bytes, frame_count=5):
-    video_path = "/tmp/gif.mp4"
+def extract_gif_frames(file_bytes, max_frames=5):
+    try:
+        image = Image.open(BytesIO(file_bytes))
 
-    with open(video_path, "wb") as f:
-        f.write(video_bytes)
+        frames = []
 
-    cap = cv2.VideoCapture(video_path)
+        for i in range(min(max_frames, getattr(image, "n_frames", 1))):
+            image.seek(i)
 
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            frame = image.convert("RGB")
 
-    if total_frames <= 0:
-        raise Exception("Could not read animation")
+            buffer = BytesIO()
+            frame.save(buffer, format="JPEG")
 
-    frames = []
+            frames.append(buffer.getvalue())
 
-    indexes = [
-        int(i * total_frames / frame_count)
-        for i in range(frame_count)
-    ]
+        return frames
 
-    for index in indexes:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, index)
-
-        success, frame = cap.read()
-
-        if success:
-            frame = cv2.cvtColor(
-                frame,
-                cv2.COLOR_BGR2RGB
-            )
-
-            image = Image.fromarray(frame)
-
-            output = io.BytesIO()
-            image.save(
-                output,
-                format="JPEG",
-                quality=80
-            )
-
-            output.seek(0)
-
-            frames.append(output)
-
-    cap.release()
-
-    return frames
-
+    except Exception as e:
+        print("GIF ERROR:", e)
+        return []
