@@ -673,10 +673,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("STARTING VISION")
 
     analysis = analyze_image(
-        image_bytes,
-        CLOUDFLARE_API_TOKEN,
-        CLOUDFLARE_ACCOUNT_ID
-    )
+          image_bytes,
+          CLOUDFLARE_API_TOKEN,
+          CLOUDFLARE_ACCOUNT_ID,
+          analysis_type
+         )
 
     print("VISION RESULT:")
     print(analysis)
