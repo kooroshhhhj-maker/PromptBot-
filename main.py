@@ -359,6 +359,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💊 Prescription": "prescription",
         "📄 Document": "document",
         "📊 Chart": "chart",
+        "🪄 Prompt Generator": "prompt_generator",
     }
 
     if text in analysis_buttons:

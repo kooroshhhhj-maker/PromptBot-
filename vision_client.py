@@ -38,7 +38,15 @@ ANALYSIS_PROMPTS = {
     "general": (
         "Analyze this image in detail. "
         "Describe objects, scene, and read any visible text."
-    )
+     ),
+  
+  "prompt_generator": (
+    "You are an expert AI prompt engineer. "
+    "Analyze this image and create one professional image generation prompt. "
+    "Describe the subject, composition, lighting, camera angle, colours, "
+    "style, materials, background and quality. "
+    "Return ONLY the final prompt."
+  )
 }
 
 
