@@ -1,77 +1,93 @@
 import requests
-from config import OPENROUTER_API_KEY
+
+from config import OPENROUTER_API_KEY, HF_TOKEN
 from config import MODEL
 
-CHAT_MODEL = MODEL
 
-def ask_ai(messages):
+CHAT_MODELS = [
+    "openai/gpt-oss-20b:free",
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "openrouter/free"
+]
+
+
+HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+
+def ask_huggingface(messages):
     try:
+        print("TRY HUGGING FACE MODEL")
+
+        prompt = messages[-1]["content"]
+
         response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {HF_TOKEN}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": CHAT_MODEL,
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 2000
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 500,
+                    "temperature": 0.7
+                }
             },
-            timeout=60
+            timeout=90
         )
 
         data = response.json()
 
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
+        if isinstance(data, list) and "generated_text" in data[0]:
+            return data[0]["generated_text"]
 
-        return f"❌ OpenRouter Error:\n{data}"
+        print("HF FAILED:", data)
 
     except Exception as e:
-        return f"❌ AI Error: {e}"
+        print("HF ERROR:", e)
+
+    return None
+
+def ask_ai(messages):
+
+    for model in CHAT_MODELS:
+
+        try:
+            print("TRY OPENROUTER MODEL:", model)
+
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                },
+
+                timeout=60
+            )
+
+            data = response.json()
+
+            if "choices" in data:
+                print("OPENROUTER SUCCESS:", model)
+                return data["choices"][0]["message"]["content"]
+
+            print("OPENROUTER FAILED:", model, data)
+
+        except Exception as e:
+            print("OPENROUTER ERROR:", model, e)
 
 
-def write_text(topic, style="professional"):
-    messages = [
-        {
-            "role": "system",
-            "content": f"You are a professional writer. Write in a {style} style."
-        },
-        {
-            "role": "user",
-            "content": topic
-        }
-    ]
+    hf_answer = ask_huggingface(messages)
 
-    return ask_ai(messages)
+    if hf_answer:
+        return hf_answer
 
-
-def brainstorm_ideas(topic, count=5):
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a creative brainstorming assistant."
-        },
-        {
-            "role": "user",
-            "content": f"Give me {count} creative ideas about: {topic}"
-        }
-    ]
-
-    return ask_ai(messages)
-
-
-def generate_prompt(topic, style="detailed"):
-    messages = [
-        {
-            "role": "system",
-            "content": "Create detailed AI image generation prompts."
-        },
-        {
-            "role": "user",
-            "content": f"Create an image prompt about {topic}. Style: {style}"
-        }
-    ]
-
-    return ask_ai(messages)
+    return "❌ هیچ موتور AI در دسترس نیست."

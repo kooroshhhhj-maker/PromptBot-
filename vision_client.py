@@ -4,106 +4,115 @@ from PIL import Image
 from io import BytesIO
 
 from ocr import extract_text
-from config import OPENROUTER_API_KEY
 from image_analysis_prompts import get_analysis_prompt
+from config import CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 
-VISION_MODELS = [
-    "google/gemma-3-27b-it:free",
-    "qwen/qwen2.5-vl-32b-instruct:free"
-]
+
+MODEL = "@cf/llava-hf/llava-1.5-7b-hf"
 
 
 def analyze_image(image_bytes, analysis_type="general"):
 
-    image = Image.open(BytesIO(image_bytes))
+    try:
+        image = Image.open(BytesIO(image_bytes))
 
-    ocr_text = extract_text(image_bytes)
+        # تبدیل به RGB برای جلوگیری از خطای decode
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-    print("OCR TEXT:")
-    print(ocr_text)
+        # OCR
+        ocr_text = extract_text(image_bytes)
 
-    image.thumbnail((768, 768))
-
-    buffer = BytesIO()
-    image.save(buffer, format="JPEG", quality=85)
-
-    image_base64 = base64.b64encode(
-        buffer.getvalue()
-    ).decode("utf-8")
+        print("OCR TEXT:")
+        print(ocr_text)
 
 
-    for model in VISION_MODELS:
+        # تغییر اندازه
+        image.thumbnail((768, 768))
 
-        print("VISION MODEL TRY:", model)
 
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
+        # تبدیل دوباره به JPEG استاندارد
+        buffer = BytesIO()
 
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                },
+        image.save(
+            buffer,
+            format="JPEG",
+            quality=85
+        )
 
-                json={
-                    "model": model,
+        buffer.seek(0)
 
-                    "messages": [
-                        {
-                            "role": "user",
 
-                            "content": [
-                                {
-                                    "type": "text",
+        # Cloudflare نیاز به بایت تصویر دارد
+        image_data = list(buffer.getvalue())
 
-                                    "text": f"""
+
+        url = (
+            f"https://api.cloudflare.com/client/v4/accounts/"
+            f"{CLOUDFLARE_ACCOUNT_ID}/ai/run/{MODEL}"
+        )
+
+
+        print("CLOUDFLARE VISION START")
+
+
+        response = requests.post(
+
+            url,
+
+            headers={
+                "Authorization":
+                f"Bearer {CLOUDFLARE_API_TOKEN}",
+
+                "Content-Type":
+                "application/json"
+            },
+
+
+            json={
+
+                "image": image_data,
+
+                "prompt":
+                f"""
 {get_analysis_prompt(analysis_type)}
 
-OCR text:
-----------------
+OCR TEXT:
 {ocr_text}
 
-Analyze the image carefully.
+Analyze this image.
 
-After analysis, create a professional AI image generation prompt based on this image.
+Describe:
+- objects
+- people
+- environment
+- colors
+- important details
+
+Then create a professional AI image generation prompt based on this image.
 """
-                                },
+            },
 
-                                {
-                                    "type": "image_url",
+            timeout=120
+        )
 
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_base64}"
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
 
-                timeout=40
+        data = response.json()
+
+        print(data)
+
+
+        if data.get("success"):
+
+            return data["result"].get(
+                "description",
+                str(data["result"])
             )
 
 
-            data = response.json()
-
-            print(data)
+        return "❌ Cloudflare Vision failed:\n" + str(data)
 
 
-            if "choices" in data:
+    except Exception as e:
 
-                print(f"Model {model} worked.")
-
-                return data["choices"][0]["message"]["content"]
-
-
-            print(f"Model {model} failed:", data)
-
-
-        except Exception as e:
-
-            print("VISION ERROR:", e)
-
-
-
-    return "❌ All vision models failed."
+        return f"❌ Vision Exception: {e}"
