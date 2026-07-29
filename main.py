@@ -637,6 +637,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(answer)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("PHOTO RECEIVED")
+    print("MODE:", user_modes.get(user_id))
     user_id = update.effective_user.id
     increase_messages(user_id)
     
