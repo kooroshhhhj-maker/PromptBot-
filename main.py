@@ -350,19 +350,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         return
-    
-    # Settings menu
-    if text == get_text(user_id, "settings"):
-        keyboard = ReplyKeyboardMarkup(
-            [
-                [get_text(user_id, "language"), get_text(user_id, "image_settings")],
-                [get_text(user_id, "back")]
-            ],
-            resize_keyboard=True
-        )
+   
+    # Image analysis type selection
+    analysis_buttons = {
+        "🔬 Microscope": "microscope",
+        "🧪 Laboratory": "laboratory",
+        "💊 Prescription": "prescription",
+        "📄 Document": "document",
+        "📊 Chart": "chart",
+    }
+
+    if text in analysis_buttons:
+        image_analysis_types[user_id] = analysis_buttons[text]
+        user_modes[user_id] = "analyze_image"
+
         await update.message.reply_text(
-            get_text(user_id, "settings_menu"),
-            reply_markup=keyboard
+            f"Selected: {text}\n\nPlease send the image."
         )
         return
     
