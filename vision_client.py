@@ -14,37 +14,23 @@ MODEL = "@cf/llava-hf/llava-1.5-7b-hf"
 def analyze_image(image_bytes, analysis_type="general"):
 
     try:
+        print("CLOUDFLARE VISION START")
+
         image = Image.open(BytesIO(image_bytes))
 
-        # تبدیل به RGB برای جلوگیری از خطای decode
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-
-        # OCR
         ocr_text = extract_text(image_bytes)
 
         print("OCR TEXT:")
         print(ocr_text)
 
-
-        # تغییر اندازه
         image.thumbnail((768, 768))
 
-
-        # تبدیل دوباره به JPEG استاندارد
         buffer = BytesIO()
+        image.save(buffer, format="JPEG", quality=85)
 
-        image.save(
-            buffer,
-            format="JPEG",
-            quality=85
-        )
-
-        buffer.seek(0)
-
-
-        # Cloudflare نیاز به بایت تصویر دارد
-        image_data = list(buffer.getvalue())
+        img_base64 = base64.b64encode(
+            buffer.getvalue()
+        ).decode("utf-8")
 
 
         url = (
@@ -53,52 +39,31 @@ def analyze_image(image_bytes, analysis_type="general"):
         )
 
 
-        print("CLOUDFLARE VISION START")
-
-        print("SENDING TO CLOUDFLARE...")
-
         response = requests.post(
-
             url,
-
             headers={
-                "Authorization":
-                f"Bearer {CLOUDFLARE_API_TOKEN}",
-
-                "Content-Type":
-                "application/json"
+                "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+                "Content-Type": "application/json"
             },
-
-
             json={
-
-                "image": image_data,
-
-                "prompt":
-                f"""
+                "image": img_base64,
+                "prompt": f"""
 {get_analysis_prompt(analysis_type)}
 
 OCR TEXT:
 {ocr_text}
 
-Analyze this image.
-
-Describe:
-- objects
-- people
-- environment
-- colors
-- important details
-
-Then create a professional AI image generation prompt based on this image.
+Analyze this image carefully.
+Create a detailed description.
+Also create an AI image generation prompt.
 """
             },
-
             timeout=120
         )
 
-print("CLOUDFLARE RESPONSE:", response.status_code)
-print(response.text[:500])
+
+        print("CLOUDFLARE RESPONSE:", response.status_code)
+
 
         data = response.json()
 
@@ -107,10 +72,7 @@ print(response.text[:500])
 
         if data.get("success"):
 
-            return data["result"].get(
-                "description",
-                str(data["result"])
-            )
+            return data["result"]["description"]
 
 
         return "❌ Cloudflare Vision failed:\n" + str(data)
@@ -118,4 +80,6 @@ print(response.text[:500])
 
     except Exception as e:
 
-        return f"❌ Vision Exception: {e}"
+        print("VISION ERROR:", e)
+
+        return "❌ Vision error:\n" + str(e)
