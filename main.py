@@ -668,6 +668,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     analysis_type = image_analysis_types.get(user_id, "general")
 
+    print("ANALYSIS TYPE:", analysis_type)
+
     print("STARTING VISION")
 
     analysis = analyze_image(
