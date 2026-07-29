@@ -91,3 +91,46 @@ def ask_ai(messages):
         return hf_answer
 
     return "❌ هیچ موتور AI در دسترس نیست."
+def write_text(text, style="professional"):
+    messages = [
+        {
+            "role": "user",
+            "content": f"""
+Write this text in {style} style:
+
+{text}
+"""
+        }
+    ]
+
+    return ask_ai(messages)
+
+
+def brainstorm_ideas(text, count=5):
+    messages = [
+        {
+            "role": "user",
+            "content": f"""
+Give me {count} creative ideas about:
+
+{text}
+"""
+        }
+    ]
+
+    return ask_ai(messages)
+
+
+def generate_prompt(text):
+    messages = [
+        {
+            "role": "user",
+            "content": f"""
+Create a professional AI image generation prompt for:
+
+{text}
+"""
+        }
+    ]
+
+    return ask_ai(messages)

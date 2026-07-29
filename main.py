@@ -462,6 +462,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_modes[user_id] = "image_wait_style_choice"
         return
+
     # Style selected
     if user_modes.get(user_id) == "image_wait_style_choice":
         image_temp["style"] = text
@@ -478,17 +479,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             size=size
         )
 
-     if image:
-        image.seek(0)
-        image.name = "generated_image.jpg"
+        if image:
+            image.seek(0)
+            image.name = "generated_image.jpg"
 
             await update.message.reply_photo(
-                  photo=image,
-                  caption=get_text(user_id, "success")
-           )
+                photo=image,
+                caption=get_text(user_id, "success")
+            )
 
         else:
-            await update.message.reply_text(get_text(user_id, "failed"))
+            await update.message.reply_text(
+                get_text(user_id, "failed")
+            )
 
         user_modes[user_id] = "chat"
         return
@@ -565,19 +568,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Image generation
     if user_modes.get(user_id) == "image":
         user_modes[user_id] = "image_wait_style"
-        await update.message.reply_text(get_text(user_id, "generating"))
-        size, style = get_image_settings(user_id)
-        image = generate_image(text, style=style, size=size)
 
-    if image:
-       print("IMAGE READY:", image.name, image.getbuffer().nbytes)
-       image.seek(0)
-        
+        await update.message.reply_text(
+            get_text(user_id, "generating")
+        )
+
+        size, style = get_image_settings(user_id)
+
+        image = generate_image(
+            text,
+            style=style,
+            size=size
+        )
+
         if image:
-            await update.message.reply_photo(photo=image, caption=get_text(user_id, "success"))
+            print(
+                "IMAGE READY:",
+                image.name,
+                image.getbuffer().nbytes
+            )
+
+            image.seek(0)
+
+            await update.message.reply_photo(
+                photo=image,
+                caption=get_text(user_id, "success")
+            )
+
         else:
-            await update.message.reply_text(get_text(user_id, "failed"))
-        
+            await update.message.reply_text(
+                get_text(user_id, "failed")
+            )
+
         user_modes[user_id] = "chat"
         return
     
