@@ -55,6 +55,7 @@ def analyze_image(image_bytes, analysis_type="general"):
 
         print("CLOUDFLARE VISION START")
 
+        print("SENDING TO CLOUDFLARE...")
 
         response = requests.post(
 
@@ -96,6 +97,8 @@ Then create a professional AI image generation prompt based on this image.
             timeout=120
         )
 
+print("CLOUDFLARE RESPONSE:", response.status_code)
+print(response.text[:500])
 
         data = response.json()
 
