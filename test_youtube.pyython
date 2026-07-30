@@ -1,0 +1,8 @@
+from youtube_analyzer import get_video_info
+
+url = "لینک یک ویدیوی یوتیوب"
+
+result = get_video_info(url)
+
+print(result)
+
