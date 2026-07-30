@@ -1,5 +1,7 @@
 import logging
 import os
+import subprocess
+import tempfile
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -782,6 +784,47 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_modes[user_id] = "chat"
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        voice = update.message.voice
+
+        file = await context.bot.get_file(voice.file_id)
+
+        with tempfile.NamedTemporaryFile(suffix=".ogg") as input_file:
+            await file.download_to_drive(input_file.name)
+
+            result = subprocess.run(
+                [
+                    "/data/data/com.termux/files/home/PromptBot/whisper.cpp/build/bin/whisper-cli",
+                    "-m",
+                    "/data/data/com.termux/files/home/PromptBot/whisper.cpp/models/ggml-base.bin",
+                    "-f",
+                    input_file.name,
+                    "-l",
+                    "auto",
+                    "-nt"
+                ],
+                capture_output=True,
+                text=True
+            )
+
+            text = result.stdout.strip()
+
+        if text:
+            await update.message.reply_text(
+                "🎤 متن ویس:\n\n" + text
+            )
+        else:
+            await update.message.reply_text(
+                "❌ نتونستم صدا رو تبدیل کنم."
+            )
+
+    except Exception as e:
+        print("VOICE ERROR:", e)
+        await update.message.reply_text(
+            f"❌ خطا در تبدیل ویس:\n{e}"
+        )
+
 def main():
     init_db()
     
@@ -800,8 +843,11 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
+
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.ANIMATION, handle_gif))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_message
