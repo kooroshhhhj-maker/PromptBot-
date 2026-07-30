@@ -795,9 +795,20 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             result = subprocess.run(
                 [
-            os.path.expanduser("~/PromptBot/whisper.cpp/build/bin/whisper-cli"),
+            os.path.join(
+            os.getcwd(),
+                    "whisper.cpp",
+                    "build",
+                    "bin",
+                    "whisper-cli"
+               ),
                     "-m",
-            os.path.expanduser("~/PromptBot/whisper.cpp/models/ggml-base.bin"),
+            os.path.join(
+            os.getcwd(),
+                    "whisper.cpp",
+                    "models",
+                    "ggml-base.bin"
+                ),
                     "-f",
                     input_file.name,
                     "-l",
