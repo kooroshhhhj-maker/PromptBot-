@@ -319,10 +319,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         get_text(user_id, "write_text"): "writing",
         get_text(user_id, "brainstorm"): "ideas",
         get_text(user_id, "create_prompt"): "prompt",
-    }
+         }
 
     if text in menu_text:
         user_modes[user_id] = menu_text[text]
+
+        print("MODE CHANGED:", user_modes[user_id])
+
 
         if text == get_text(user_id, "ai_chat"):
             await update.message.reply_text(
