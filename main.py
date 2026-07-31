@@ -274,6 +274,7 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(get_text(user_id, "memory_cleared"))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("HANDLE MESSAGE STARTED")
     if update.message.animation:
         await update.message.reply_text("🤣 GIF گرفتم! هنوز تحلیلش رو یاد نگرفتم")
         return
@@ -288,6 +289,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     increase_messages(user_id)
     text = update.message.text
+    print("TEXT RECEIVED:", repr(text))
     print("MESSAGE RECEIVED:", repr(text))
     print("MESSAGE RECEIVED:", repr(text))
     print("RECEIVED TEXT:", repr(text))
