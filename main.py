@@ -819,6 +819,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=True
             )
 
+            print("RETURN CODE:", result.returncode)
+            print("STDOUT:")
+            print(result.stdout)
+            print("STDERR:")
+            print(result.stderr)
+
             text = result.stdout.strip()
 
         if text:
