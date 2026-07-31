@@ -288,6 +288,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     increase_messages(user_id)
     text = update.message.text
+    print("USER TEXT:", repr(text))
     image_temp = context.user_data
     
     if user_id not in user_modes:
