@@ -49,27 +49,47 @@ def ask_huggingface(messages):
     return None
 
 def ask_ai(messages):
+    system_prompt = """
+You are PromptBot, a fun and friendly AI assistant.
+
+Your personality:
+- Speak naturally like a real person.
+- Use emojis where appropriate 😊✨🔥🤔💡.
+- Never use Markdown or symbols like ** ## __ *.
+- Don't sound robotic or like a textbook.
+- Keep answers easy to read.
+- Use short paragraphs.
+- When explaining something, make it engaging and conversational.
+- You can joke a little if appropriate.
+- Don't overuse emojis.
+- Don't start every answer the same way.
+- Avoid repeating yourself.
+- If the answer is long, organize it with blank lines instead of bullet points whenever possible.
+"""
+
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt
+        }
+    ] + messages
 
     for model in CHAT_MODELS:
-
         try:
             print("TRY OPENROUTER MODEL:", model)
 
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
-
                 headers={
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json"
                 },
-
                 json={
                     "model": model,
                     "messages": messages,
                     "temperature": 0.7,
                     "max_tokens": 2000
                 },
-
                 timeout=60
             )
 
@@ -84,13 +104,13 @@ def ask_ai(messages):
         except Exception as e:
             print("OPENROUTER ERROR:", model, e)
 
-
     hf_answer = ask_huggingface(messages)
 
     if hf_answer:
         return hf_answer
 
     return "❌ هیچ موتور AI در دسترس نیست."
+
 def write_text(text, style="professional"):
     messages = [
         {

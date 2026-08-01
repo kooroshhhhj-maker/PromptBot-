@@ -290,6 +290,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     increase_messages(user_id)
     text = update.message.text
     print("TEXT RECEIVED:", repr(text))
+    print("EDIT BUTTON SHOULD BE:", repr(get_text(user_id, "edit_image")))
     print("MESSAGE RECEIVED:", repr(text))
     print("MESSAGE RECEIVED:", repr(text))
     print("RECEIVED TEXT:", repr(text))
@@ -362,6 +363,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     resize_keyboard=True
                 )
             )
+
+        elif text == get_text(user_id, "write_text"):
+            await update.message.reply_text(
+                 "✍️ Send me the text or topic you want me to write."
+                )
+
+        elif text == get_text(user_id, "brainstorm"):
+            await update.message.reply_text(
+                "🧠 Tell me your idea or topic."
+                )
+
+        elif text == get_text(user_id, "create_prompt"):
+            await update.message.reply_text(
+                "🧾 Describe what prompt you want."
+                )
+
+        elif text == get_text(user_id, "edit_image"):
+            await update.message.reply_text(
+                "✨ Send me the image you want to edit."
+         )
 
         return
    
@@ -798,10 +819,31 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         voice = update.message.voice
 
+        if not voice:
+            voice = update.message.audio or update.message.document
+
+        if not voice:
+            await update.message.reply_text("❌ فایل صوتی دریافت نشد")
+            return
+
         file = await context.bot.get_file(voice.file_id)
 
-        with tempfile.NamedTemporaryFile(suffix=".ogg") as input_file:
+        with tempfile.NamedTemporaryFile(suffix=".ogg") as input_file, \
+             tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
+
             await file.download_to_drive(input_file.name)
+
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    input_file.name,
+                    wav_file.name
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
 
             result = subprocess.run(
                 [
@@ -820,7 +862,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "ggml-base.bin"
                 ),
                     "-f",
-                    input_file.name,
+                    wav_file.name,
                     "-l",
                     "auto",
                     "-nt"
