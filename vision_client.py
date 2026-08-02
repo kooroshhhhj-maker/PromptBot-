@@ -39,6 +39,11 @@ ANALYSIS_PROMPTS = {
         "Analyze this image in detail. "
         "Describe objects, scene, and read any visible text."
      ),
+    
+    "gif": (
+        "Analyze this GIF frame. Describe the action, emotion, humor, "
+        "movement, and context briefly. Do not invent details."
+     ),
   
   "prompt_generator": (
     "You are an expert AI prompt engineer. "
@@ -84,11 +89,8 @@ def analyze_image(image_bytes, token, account_id, analysis_type="general"):
     )
 
     print("CLOUDFLARE STATUS:", response.status_code)
-    print(response.json())
-    print("RAW JSON:")   
-    print("PAYLOAD SENT:", payload.keys())
-    print("IMAGE SIZE:", len(image_bytes))
-    print(response.json())
+    print("RAW JSON:")
+    print(response.text)
 
     if response.status_code != 200:
         return None
@@ -103,8 +105,6 @@ def analyze_image(image_bytes, token, account_id, analysis_type="general"):
     if isinstance(result, dict):
         return (
             result.get("response")
-            print("RAW JSON:")
-	    print(response.text)
             or result.get("description")
             or str(result)
         )
