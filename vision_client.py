@@ -103,6 +103,8 @@ def analyze_image(image_bytes, token, account_id, analysis_type="general"):
     if isinstance(result, dict):
         return (
             result.get("response")
+            print("RAW JSON:")
+	    print(response.text)
             or result.get("description")
             or str(result)
         )

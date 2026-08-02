@@ -2,7 +2,8 @@ from ai_client import ask_ai
 
 
 def make_gif_reply(analysis):
-
+    print("GIF RESPONSE INPUT:")
+    print(analysis)
     print("==============")
     print("GIF ANALYSIS:")
     print(analysis)
