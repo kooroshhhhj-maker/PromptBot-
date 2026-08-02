@@ -3,6 +3,11 @@ from ai_client import ask_ai
 
 def make_gif_reply(analysis):
 
+    print("==============")
+    print("GIF ANALYSIS:")
+    print(analysis)
+    print("==============")
+
     response = ask_ai([
         {
             "role": "system",

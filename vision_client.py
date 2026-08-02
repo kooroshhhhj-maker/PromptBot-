@@ -80,23 +80,28 @@ def analyze_image(image_bytes, token, account_id, analysis_type="general"):
         url,
         headers=headers,
         json=payload,
-        timeout=60
+        timeout=120
     )
 
     print("CLOUDFLARE STATUS:", response.status_code)
-    print(response.text)
+    print("RAW JSON:")   
+    print(response.json())
 
     if response.status_code != 200:
         return None
 
     data = response.json()
 
-    if "result" in data:
-        result = data["result"]
+    result = data.get("result")
 
-        if isinstance(result, dict):
-            return result.get("response")
+    print("VISION RESULT TYPE:", type(result))
+    print("VISION RESULT:", result)
 
-        return result
+    if isinstance(result, dict):
+        return (
+            result.get("response")
+            or result.get("description")
+            or str(result)
+        )
 
-    return None
+    return str(result)

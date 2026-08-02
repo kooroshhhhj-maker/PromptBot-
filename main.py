@@ -23,6 +23,7 @@ from ai_client import ask_ai, write_text, brainstorm_ideas, generate_prompt
 from image_gen import generate_image
 from database import init_db, add_user, increase_messages, get_stats, get_user_language, set_user_language, get_image_settings, set_image_size, set_image_style
 from vision_client import analyze_image
+from config import CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 from gif_analyzer import extract_gif_frames
 from gif_response import make_gif_reply
 from image_edit import save_user_image, edit_image
@@ -274,10 +275,15 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(get_text(user_id, "memory_cleared"))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("ANIMATION:", update.message.animation)
+    print("VIDEO:", update.message.video)
+    print("DOCUMENT:", update.message.document)
     print("HANDLE MESSAGE STARTED")
+
     if update.message.animation:
         await update.message.reply_text("🤣 GIF گرفتم! هنوز تحلیلش رو یاد نگرفتم")
         return
+
     print("HANDLE_MESSAGE CALLED")
     if update.message.animation:
         print("GIF RECEIVED (animation)")
@@ -756,7 +762,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎨 " + get_text(user_id, "create_prompt") + ":\n\n" + prompt
     )
 
-
 async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -777,29 +782,33 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         results = []
 
-        for i, frame in enumerate(frames):
+        for i, frame_bytes in enumerate(frames):
 
             print(f"FRAME {i+1} START")
 
-            frame.seek(0)
-            frame_bytes = frame.read()
-
-            print(
-                f"FRAME {i+1} SIZE:",
-                len(frame_bytes)
-            )
+            print("FRAME SIZE:", len(frame_bytes))
+            print("FRAME HEADER:", frame_bytes[:20])
 
             try:
-                result = analyze_image(frame_bytes)
+                result = analyze_image(
+                    frame_bytes,
+                    CLOUDFLARE_API_TOKEN,
+                    CLOUDFLARE_ACCOUNT_ID
+                )
+
+                print("RAW VISION:", result)
+                print("RESULT TYPE:", type(result))
+                print("RESULT LENGTH:", len(str(result)) if result else 0)
+
+                if result:
+                    results.append(result)
+                else:
+                    results.append("No vision result received")
 
             except Exception as e:
                 print("VISION ERROR:", e)
-                result = f"Vision error: {e}"
-
+                results.append(f"Vision error: {e}")
             print(f"FRAME {i+1} DONE")
-
-            results.append(result)
-
 
         combined = "\n\n".join(results)
 
@@ -809,6 +818,7 @@ async def handle_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         print("GIF ERROR:", e)
+
         await update.message.reply_text(
             f"❌ خطا در تحلیل GIF:\n{e}"
         )
