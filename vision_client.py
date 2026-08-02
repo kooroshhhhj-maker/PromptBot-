@@ -84,7 +84,10 @@ def analyze_image(image_bytes, token, account_id, analysis_type="general"):
     )
 
     print("CLOUDFLARE STATUS:", response.status_code)
+    print(response.json())
     print("RAW JSON:")   
+    print("PAYLOAD SENT:", payload.keys())
+    print("IMAGE SIZE:", len(image_bytes))
     print(response.json())
 
     if response.status_code != 200:
