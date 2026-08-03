@@ -922,6 +922,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("status", stats))
 
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.ANIMATION, handle_gif))
