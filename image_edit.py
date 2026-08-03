@@ -4,7 +4,7 @@ import base64
 from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
 import os
 
-from config import OPENROUTER_API_KEY, FAL_KEY, REPLICATE_API_TOKEN
+from config import CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 
 def save_user_image(user_id, image_bytes):
     """Save uploaded image"""
@@ -17,50 +17,51 @@ def save_user_image(user_id, image_bytes):
 
 def edit_image_with_ai(image_path, prompt):
     try:
-        print(f"🎨 Replicate Edit: {prompt}")
-
-        if not REPLICATE_API_TOKEN:
-            return None
+        print(f"🎨 Cloudflare Edit: {prompt}")
 
         with open(image_path, "rb") as f:
-            image_base64 = base64.b64encode(f.read()).decode("utf-8")
+            image_bytes = f.read()
 
-        response = requests.post(
-            "https://api.replicate.com/v1/predictions",
-            headers={
-                "Authorization": f"Bearer {REPLICATE_API_TOKEN}",
-                "Content-Type": "application/json"
-              },
-              json={
-                  "model": "black-forest-labs/flux-kontext-pro",
-                  "input": {
-                  "image": f"data:image/png;base64,{image_base64}",
-                  "prompt": f"Modify only the requested area. Preserve the exact same person, face, identity, eyes, skin, pose and background. Make this a realistic professional photo edit. Requested change: {prompt}"
-                   }
-              },
-              timeout=120
-
+        url = (
+            f"https://api.cloudflare.com/client/v4/accounts/"
+            f"{CLOUDFLARE_ACCOUNT_ID}/ai/run/"
+            f"@cf/runwayml/stable-diffusion-v1-5-img2img"
         )
 
-        if response.status_code not in [200, 201]:
-            print(response.text)
+        headers = {
+            "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "image": list(image_bytes),
+            "prompt": (
+                "Modify only the requested area. "
+                "Preserve the same person, face, identity, "
+                "pose and background. "
+                f"Requested change: {prompt}"
+            )
+        }
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data,
+            timeout=180
+        )
+
+        if response.status_code != 200:
+            print("Cloudflare Error:", response.text)
             return None
 
-        data = response.json()
-        print("REPLICATE RESULT:", data)
-        print(data)
+        image = BytesIO(response.content)
+        image.name = "edited_image.png"
+        image.seek(0)
 
-        if "output" in data:
-            img_url = data["output"]
-            img_response = requests.get(img_url)
-
-            image = BytesIO(img_response.content)
-            image.name = "edited_image.jpg"
-            image.seek(0)
-            return image
+        return image
 
     except Exception as e:
-        print(f"❌ Replicate Error: {e}")
+        print(f"❌ Cloudflare Edit Error: {e}")
 
     return None
 
