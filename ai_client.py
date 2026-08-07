@@ -8,9 +8,12 @@ CHAT_MODELS = [
     "openai/gpt-oss-20b:free",
     "google/gemma-4-31b-it:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
-    "openrouter/free"
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "nvidia/nemotron-nano-9b-v2:free"
 ]
-
 
 HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 
@@ -94,6 +97,9 @@ Your personality:
             )
 
             data = response.json()
+
+            print("STATUS:", response.status_code)
+            print("RESPONSE:", data)
 
             if "choices" in data:
                 print("OPENROUTER SUCCESS:", model)
