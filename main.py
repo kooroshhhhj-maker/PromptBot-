@@ -29,6 +29,7 @@ from gif_response import make_gif_reply
 from image_edit import save_user_image, edit_image
 from image_understanding import detect_image_type
 from vision_router import route_image
+from youtube_analyzer import get_video_info
 
 # Logging setup
 logging.basicConfig(
@@ -660,6 +661,69 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_modes[user_id] = "chat"
         return
     
+    # YouTube summarizer
+    if "youtube.com/" in text or "youtu.be/" in text:
+        await update.message.reply_text(
+            "🎬 در حال دریافت ویدئوی YouTube و استخراج متن آن..."
+        )
+
+        try:
+            info = get_video_info(text.strip())
+
+            title = info.get("title") or "بدون عنوان"
+            transcript = info.get("transcript")
+
+            if not transcript:
+                await update.message.reply_text(
+                    "❌ برای این ویدئو زیرنویس قابل دریافت پیدا نشد."
+                )
+                return
+
+            await update.message.reply_text(
+                "🧠 متن ویدئو دریافت شد. در حال خلاصه‌سازی..."
+            )
+
+            youtube_prompt = [
+                {
+                    "role": "system",
+                    "content": (
+                        "تو یک خلاصه‌ساز حرفه‌ای ویدئوهای YouTube هستی. "
+                        "متن زیر Transcript واقعی ویدئو است. "
+                        "آن را به فارسی خلاصه کن. "
+                        "خلاصه باید دقیق، منظم و بدون ساختن اطلاعات جدید باشد. "
+                        "ساختار پاسخ:\n"
+                        "🎬 عنوان ویدئو\n"
+                        "📝 خلاصه\n"
+                        "🔑 نکات مهم\n"
+                        "📌 نتیجه‌گیری"
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"عنوان ویدئو: {title}\n\n"
+                        f"Transcript:\n{transcript}"
+                    )
+                }
+            ]
+
+            answer = ask_ai(
+                youtube_prompt,
+                personality=user_personalities.get(user_id, "normal")
+            )
+
+            await update.message.reply_text(
+                "🎬 " + title + "\n\n" + answer
+            )
+
+        except Exception as e:
+            logger.exception("YouTube summarization failed")
+            await update.message.reply_text(
+                f"❌ خطا در پردازش ویدئو:\n{e}"
+            )
+
+        return
+
     # Image generation
     if user_modes.get(user_id) == "image":
         user_modes[user_id] = "image_wait_style"
