@@ -68,15 +68,28 @@ def get_video_info(url):
 
 
 def get_transcript(video_id):
-    api = YouTubeTranscriptApi()
-
-    # اول انگلیسی
-    languages = ["en"]
+    print("========== YOUTUBE TRANSCRIPT DEBUG ==========")
+    print("VIDEO ID:", video_id)
 
     try:
+        api = YouTubeTranscriptApi()
+
+        print("TRANSCRIPT API: fetching English transcript...")
+
         transcript = api.fetch(
             video_id,
-            languages=languages,
+            languages=["en"],
+        )
+
+        print("TRANSCRIPT API: fetch SUCCESS")
+        print("TRANSCRIPT OBJECT TYPE:", type(transcript).__name__)
+        print(
+            "LANGUAGE:",
+            getattr(transcript, "language_code", None)
+        )
+        print(
+            "GENERATED:",
+            getattr(transcript, "is_generated", None)
         )
 
         parts = []
@@ -88,23 +101,30 @@ def get_transcript(video_id):
                 parts.append(text)
 
         result = " ".join(parts)
-        result = re.sub(r"\s+", " ", result).strip()
+        result = re.sub(r"\\s+", " ", result).strip()
 
-        if result:
-            print(
-                "YOUTUBE TRANSCRIPT SUCCESS:",
-                len(result),
-                "characters",
-            )
-            return result
-
-    except Exception as e:
         print(
-            "ENGLISH TRANSCRIPT WARNING:",
-            str(e),
+            "YOUTUBE TRANSCRIPT SUCCESS:",
+            len(result),
+            "characters"
         )
 
-    # زبان‌های جایگزین
+        if result:
+            print("==============================================")
+            return result
+
+        print("TRANSCRIPT RESULT IS EMPTY")
+        print("==============================================")
+
+    except Exception as e:
+        import traceback
+
+        print("!!!!!!!! YOUTUBE TRANSCRIPT ERROR !!!!!!!!")
+        print("ERROR TYPE:", type(e).__name__)
+        print("ERROR:", repr(e))
+        traceback.print_exc()
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
     fallback_languages = [
         "fa",
         "ar",
@@ -116,6 +136,13 @@ def get_transcript(video_id):
 
     for language in fallback_languages:
         try:
+            print(
+                "TRANSCRIPT FALLBACK:",
+                language
+            )
+
+            api = YouTubeTranscriptApi()
+
             transcript = api.fetch(
                 video_id,
                 languages=[language],
@@ -130,23 +157,30 @@ def get_transcript(video_id):
                     parts.append(text)
 
             result = " ".join(parts)
-            result = re.sub(r"\s+", " ", result).strip()
+            result = re.sub(r"\\s+", " ", result).strip()
 
             if result:
                 print(
                     "YOUTUBE TRANSCRIPT SUCCESS:",
                     language,
                     len(result),
-                    "characters",
+                    "characters"
                 )
+                print("==============================================")
                 return result
 
         except Exception as e:
+            import traceback
+
             print(
-                "TRANSCRIPT WARNING",
+                "FALLBACK ERROR:",
                 language,
-                ":",
-                str(e),
+                type(e).__name__,
+                repr(e)
             )
+            traceback.print_exc()
+
+    print("YOUTUBE TRANSCRIPT FAILED COMPLETELY")
+    print("==============================================")
 
     return None
