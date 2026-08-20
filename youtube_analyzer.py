@@ -1,10 +1,10 @@
 import re
+
 import yt_dlp
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
 def extract_video_id(url):
-    """Extract YouTube video ID from common YouTube URL formats."""
     patterns = [
         r"(?:youtube\.com/watch\?v=)([^&]+)",
         r"(?:youtu\.be/)([^?&]+)",
@@ -26,38 +26,43 @@ def get_video_info(url):
     if not video_id:
         raise ValueError("لینک YouTube معتبر نیست.")
 
-    # فقط برای گرفتن عنوان و توضیحات.
-    # اگر yt-dlp به خاطر Bot-check شکست خورد،
-    # Transcript همچنان می‌تواند با API جداگانه دریافت شود.
-    title = None
-    description = None
+    title = "YouTube Video"
+    description = ""
 
+    # فقط برای اطلاعات جانبی؛ شکست آن نباید Transcript را خراب کند.
     try:
         ydl_opts = {
             "quiet": True,
             "skip_download": True,
+            "socket_timeout": 10,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web_embedded", "android_vr"]
+                    "player_client": [
+                        "web_embedded",
+                        "android_vr",
+                    ]
                 }
             },
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(
+                f"https://www.youtube.com/watch?v={video_id}",
+                download=False,
+            )
 
-        title = info.get("title")
-        description = info.get("description")
+        title = info.get("title") or title
+        description = info.get("description") or ""
 
     except Exception as e:
         print("YOUTUBE INFO WARNING:", str(e))
 
-    # Transcript را مستقیم با youtube-transcript-api می‌گیریم.
+    # Transcript مستقل از yt-dlp
     transcript = get_transcript(video_id)
 
     return {
-        "title": title or "YouTube Video",
-        "description": description or "",
+        "title": title,
+        "description": description,
         "transcript": transcript,
     }
 
@@ -65,13 +70,13 @@ def get_video_info(url):
 def get_transcript(video_id):
     api = YouTubeTranscriptApi()
 
-    # ابتدا انگلیسی را امتحان می‌کنیم.
+    # اول انگلیسی
     languages = ["en"]
 
     try:
         transcript = api.fetch(
             video_id,
-            languages=languages
+            languages=languages,
         )
 
         parts = []
@@ -83,17 +88,23 @@ def get_transcript(video_id):
                 parts.append(text)
 
         result = " ".join(parts)
-
         result = re.sub(r"\s+", " ", result).strip()
 
         if result:
-            print("YOUTUBE TRANSCRIPT SUCCESS:", len(result), "characters")
+            print(
+                "YOUTUBE TRANSCRIPT SUCCESS:",
+                len(result),
+                "characters",
+            )
             return result
 
     except Exception as e:
-        print("ENGLISH TRANSCRIPT WARNING:", str(e))
+        print(
+            "ENGLISH TRANSCRIPT WARNING:",
+            str(e),
+        )
 
-    # اگر انگلیسی موجود نبود، زبان‌های رایج دیگر را امتحان می‌کنیم.
+    # زبان‌های جایگزین
     fallback_languages = [
         "fa",
         "ar",
@@ -107,7 +118,7 @@ def get_transcript(video_id):
         try:
             transcript = api.fetch(
                 video_id,
-                languages=[language]
+                languages=[language],
             )
 
             parts = []
@@ -126,7 +137,7 @@ def get_transcript(video_id):
                     "YOUTUBE TRANSCRIPT SUCCESS:",
                     language,
                     len(result),
-                    "characters"
+                    "characters",
                 )
                 return result
 
@@ -135,7 +146,7 @@ def get_transcript(video_id):
                 "TRANSCRIPT WARNING",
                 language,
                 ":",
-                str(e)
+                str(e),
             )
 
     return None
