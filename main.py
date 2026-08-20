@@ -42,6 +42,7 @@ chat_history = {}
 user_modes = {}
 user_edit_images = {}
 image_analysis_types = {}
+user_personalities = {}
 
 # Telegram app (global)
 telegram_app = None
@@ -233,6 +234,7 @@ def get_menu_buttons(user_id):
         [get_text(user_id, "analyze_image"), get_text(user_id, "edit_image")],
         [get_text(user_id, "write_text"), get_text(user_id, "brainstorm")],
         [get_text(user_id, "create_prompt"), get_text(user_id, "settings")],
+        ["🎭 Personality"],
         [get_text(user_id, "clear_memory")]
     ]
 
@@ -273,6 +275,26 @@ async def clear_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_history[user_id] = []
     
     await update.message.reply_text(get_text(user_id, "memory_cleared"))
+
+PERSONALITY_BUTTONS = {
+    "🤖 Normal": "normal",
+    "❤️ Friendly": "friendly",
+    "📝 Prompt Engineer": "prompt_engineer",
+    "🔥 Roaster": "roaster",
+    "😂 Funny": "funny",
+    "🧠 Expert": "expert",
+    "🎓 Teacher": "teacher",
+    "💼 Professional": "professional",
+}
+
+def get_personality_keyboard():
+    return [
+        ["🤖 Normal", "❤️ Friendly"],
+        ["📝 Prompt Engineer", "🔥 Roaster"],
+        ["😂 Funny", "🧠 Expert"],
+        ["🎓 Teacher", "💼 Professional"],
+        ["🔙 Back"]
+    ]
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("ANIMATION:", update.message.animation)
@@ -336,6 +358,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     print("BUTTON RECEIVED:", repr(text))
     print("AVAILABLE BUTTONS:", list(menu_text.keys()))
+
+    # ==============================
+    # PERSONALITY MENU
+    # ==============================
+
+    if text == "🎭 Personality":
+        await update.message.reply_text(
+            "🎭 Choose your personality:",
+            reply_markup=ReplyKeyboardMarkup(
+                get_personality_keyboard(),
+                resize_keyboard=True
+            )
+        )
+        return
+
+    if text in PERSONALITY_BUTTONS:
+        user_personalities[user_id] = PERSONALITY_BUTTONS[text]
+
+        await update.message.reply_text(
+            f"✅ Personality selected: {text}",
+            reply_markup=ReplyKeyboardMarkup(
+                get_menu_buttons(user_id),
+                resize_keyboard=True
+            )
+        )
+        return
+
+
 
     if text in menu_text:
         user_modes[user_id] = menu_text[text]
@@ -673,7 +723,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_history[user_id].append({"role": "user", "content": text})
     increase_messages(user_id)
     
-    answer = ask_ai(chat_history[user_id])
+    answer = ask_ai(
+        chat_history[user_id],
+        personality=user_personalities.get(user_id, "normal")
+    )
     
     chat_history[user_id].append({"role": "assistant", "content": answer})
     await update.message.reply_text(answer)
