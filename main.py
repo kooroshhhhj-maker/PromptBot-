@@ -668,7 +668,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         try:
+            print("YOUTUBE HANDLER: BEFORE get_video_info", flush=True)
             info = get_video_info(text.strip())
+            print("YOUTUBE HANDLER: AFTER get_video_info", flush=True)
 
             title = info.get("title") or "Untitled"
             transcript = info.get("transcript")
