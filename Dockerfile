@@ -5,6 +5,8 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    curl \
+    wget \
     git \
     build-essential \
     cmake \
