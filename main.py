@@ -664,44 +664,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # YouTube summarizer
     if "youtube.com/" in text or "youtu.be/" in text:
         await update.message.reply_text(
-            "🎬 در حال دریافت ویدئوی YouTube و استخراج متن آن..."
+            "🎬 Fetching YouTube video and extracting transcript..."
         )
 
         try:
             info = get_video_info(text.strip())
 
-            title = info.get("title") or "بدون عنوان"
+            title = info.get("title") or "Untitled"
             transcript = info.get("transcript")
 
             if not transcript:
                 await update.message.reply_text(
-                    "❌ برای این ویدئو زیرنویس قابل دریافت پیدا نشد."
+                    "❌ No transcript is available for this video."
                 )
                 return
 
             await update.message.reply_text(
-                "🧠 متن ویدئو دریافت شد. در حال خلاصه‌سازی..."
+                "🧠 Transcript received. Summarizing..."
             )
 
             youtube_prompt = [
                 {
                     "role": "system",
                     "content": (
-                        "تو یک خلاصه‌ساز حرفه‌ای ویدئوهای YouTube هستی. "
-                        "متن زیر Transcript واقعی ویدئو است. "
-                        "آن را به فارسی خلاصه کن. "
-                        "خلاصه باید دقیق، منظم و بدون ساختن اطلاعات جدید باشد. "
-                        "ساختار پاسخ:\n"
-                        "🎬 عنوان ویدئو\n"
-                        "📝 خلاصه\n"
-                        "🔑 نکات مهم\n"
-                        "📌 نتیجه‌گیری"
+                        "You are a professional YouTube video summarizer. "
+                        "The text below is the real transcript of the video. "
+                        "Summarize it in the same language as the transcript. Do not translate it unless explicitly requested. "
+                        "Be accurate, organized, concise, and do not invent information. "
+                        "Structure the response as: Title, Summary, Key Points, Conclusion."
+
                     )
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"عنوان ویدئو: {title}\n\n"
+                        f"Video title: {title}\n\n"
                         f"Transcript:\n{transcript}"
                     )
                 }
@@ -719,7 +716,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.exception("YouTube summarization failed")
             await update.message.reply_text(
-                f"❌ خطا در پردازش ویدئو:\n{e}"
+                  f"❌ Error processing video:\n{e}"
             )
 
         return
@@ -844,7 +841,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ Analysis done:\n\n" + str(analysis)
     )
 
-    return
 
     print("VISION FINISHED")
     print(analysis)
@@ -871,7 +867,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         },
         {
             "role": "user",
-            "content": prompt
+            "content": answer
         }
     ])
     
