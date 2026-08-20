@@ -31,3 +31,4 @@ Werkzeug==3.1.8
 wheel==0.47.0
 youtube-transcript-api==1.2.4
 yt-dlp==2026.7.4
+youtube-transcript-api==1.2.4
