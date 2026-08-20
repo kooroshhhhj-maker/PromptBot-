@@ -16,3 +16,9 @@ test.txt
 test_output
 .env
 .env
+
+# Whisper.cpp - built/downloaded locally and rebuilt on Render
+whisper.cpp/
+
+# Whisper models
+*.bin
