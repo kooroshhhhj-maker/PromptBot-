@@ -7,6 +7,11 @@ def get_video_info(url):
     ydl_opts = {
         "quiet": True,
         "skip_download": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["web_embedded", "android_vr"]
+            }
+        },
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
