@@ -1,58 +1,141 @@
 import re
-import requests
 import yt_dlp
+from youtube_transcript_api import YouTubeTranscriptApi
+
+
+def extract_video_id(url):
+    """Extract YouTube video ID from common YouTube URL formats."""
+    patterns = [
+        r"(?:youtube\.com/watch\?v=)([^&]+)",
+        r"(?:youtu\.be/)([^?&]+)",
+        r"(?:youtube\.com/shorts/)([^?&]+)",
+        r"(?:youtube\.com/embed/)([^?&]+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+
+    return None
 
 
 def get_video_info(url):
-    ydl_opts = {
-        "quiet": True,
-        "skip_download": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["web_embedded", "android_vr"]
-            }
-        },
-    }
+    video_id = extract_video_id(url)
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    if not video_id:
+        raise ValueError("لینک YouTube معتبر نیست.")
+
+    # فقط برای گرفتن عنوان و توضیحات.
+    # اگر yt-dlp به خاطر Bot-check شکست خورد،
+    # Transcript همچنان می‌تواند با API جداگانه دریافت شود.
+    title = None
+    description = None
+
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "skip_download": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["web_embedded", "android_vr"]
+                }
+            },
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        title = info.get("title")
+        description = info.get("description")
+
+    except Exception as e:
+        print("YOUTUBE INFO WARNING:", str(e))
+
+    # Transcript را مستقیم با youtube-transcript-api می‌گیریم.
+    transcript = get_transcript(video_id)
 
     return {
-        "title": info.get("title"),
-        "description": info.get("description"),
-        "transcript": get_transcript(info),
+        "title": title or "YouTube Video",
+        "description": description or "",
+        "transcript": transcript,
     }
 
 
-def get_transcript(info):
-    captions = info.get("automatic_captions") or {}
+def get_transcript(video_id):
+    api = YouTubeTranscriptApi()
 
-    # اولویت با زیرنویس انگلیسی
-    if "en" not in captions:
-        return None
+    # ابتدا انگلیسی را امتحان می‌کنیم.
+    languages = ["en"]
 
-    caption_url = captions["en"][0]["url"]
+    try:
+        transcript = api.fetch(
+            video_id,
+            languages=languages
+        )
 
-    response = requests.get(
-        caption_url,
-        timeout=30,
-    )
-    response.raise_for_status()
+        parts = []
 
-    data = response.json()
-
-    parts = []
-
-    for event in data.get("events", []):
-        for seg in event.get("segs", []):
-            text = seg.get("utf8")
+        for item in transcript:
+            text = getattr(item, "text", None)
 
             if text:
                 parts.append(text)
 
-    transcript = " ".join(parts)
+        result = " ".join(parts)
 
-    # تمیز کردن فاصله‌ها
-    transcript = re.sub(r"\s+", " ", transcript).strip()
+        result = re.sub(r"\s+", " ", result).strip()
 
-    return transcript
+        if result:
+            print("YOUTUBE TRANSCRIPT SUCCESS:", len(result), "characters")
+            return result
+
+    except Exception as e:
+        print("ENGLISH TRANSCRIPT WARNING:", str(e))
+
+    # اگر انگلیسی موجود نبود، زبان‌های رایج دیگر را امتحان می‌کنیم.
+    fallback_languages = [
+        "fa",
+        "ar",
+        "tr",
+        "de",
+        "fr",
+        "es",
+    ]
+
+    for language in fallback_languages:
+        try:
+            transcript = api.fetch(
+                video_id,
+                languages=[language]
+            )
+
+            parts = []
+
+            for item in transcript:
+                text = getattr(item, "text", None)
+
+                if text:
+                    parts.append(text)
+
+            result = " ".join(parts)
+            result = re.sub(r"\s+", " ", result).strip()
+
+            if result:
+                print(
+                    "YOUTUBE TRANSCRIPT SUCCESS:",
+                    language,
+                    len(result),
+                    "characters"
+                )
+                return result
+
+        except Exception as e:
+            print(
+                "TRANSCRIPT WARNING",
+                language,
+                ":",
+                str(e)
+            )
+
+    return None
