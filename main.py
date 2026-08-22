@@ -13,6 +13,7 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
+    BusinessConnectionHandler,
     ContextTypes,
     filters
 )
@@ -1019,6 +1020,103 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ خطا در تبدیل ویس:\n{e}"
         )
 
+
+    
+# =========================
+# Telegram Business / Secretary Mode
+# =========================
+
+business_connections = {}
+
+async def handle_business_connection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Store/update Telegram Business connection information."""
+    connection = update.business_connection
+
+    if not connection:
+        return
+
+    business_connections[connection.id] = connection
+
+    logger.info(
+        "BUSINESS CONNECTION: id=%s enabled=%s user_chat_id=%s",
+        connection.id,
+        connection.is_enabled,
+        connection.user_chat_id,
+    )
+
+
+async def handle_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle messages received through Telegram Business."""
+    message = update.business_message
+
+    if not message:
+        return
+
+    business_connection_id = message.business_connection_id
+    text = message.text
+
+    logger.info(
+        "BUSINESS MESSAGE: connection=%s chat=%s text=%r",
+        business_connection_id,
+        message.chat_id,
+        text,
+    )
+
+    if not text:
+        return
+
+    try:
+        # Use the existing AI engine
+        answer = ask_ai(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are PromptBot, a professional AI business assistant. "
+                        "You are replying to a customer on behalf of the connected "
+                        "Telegram Business account. Be helpful, concise, polite, "
+                        "and natural. Reply in the same language as the customer."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": text,
+                },
+            ],
+            personality="normal",
+        )
+
+        if not answer:
+            answer = "متأسفم، فعلاً نتونستم پاسخ مناسبی آماده کنم."
+
+        # IMPORTANT:
+        # business_connection_id makes Telegram send the message
+        # on behalf of the connected Business account.
+        await context.bot.send_message(
+            chat_id=message.chat_id,
+            text=answer,
+            business_connection_id=business_connection_id,
+        )
+
+        logger.info(
+            "BUSINESS REPLY SENT: connection=%s chat=%s",
+            business_connection_id,
+            message.chat_id,
+        )
+
+    except Exception:
+        logger.exception("Business message handling failed")
+
+        try:
+            await context.bot.send_message(
+                chat_id=message.chat_id,
+                text="متأسفم، در پردازش پیام مشکلی پیش آمد.",
+                business_connection_id=business_connection_id,
+            )
+        except Exception:
+            logger.exception("Failed to send Business error message")
+
+
 def main():
     init_db()
     
@@ -1038,6 +1136,20 @@ def main():
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("status", stats))
+
+    # Telegram Business / Secretary Mode
+    app.add_handler(
+        BusinessConnectionHandler(handle_business_connection)
+    )
+
+    # Business messages are also Message updates in PTB 22.8.
+    # This filter makes sure only Business messages reach this handler.
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND & filters.UpdateType.BUSINESS_MESSAGE,
+            handle_business_message
+        )
+    )
 
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.ANIMATION, handle_gif))
