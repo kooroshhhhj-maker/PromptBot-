@@ -1,15 +1,14 @@
 import re
-
-import yt_dlp
+from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
 def extract_video_id(url):
     patterns = [
-        r"(?:youtube\.com/watch\?v=)([^&]+)",
-        r"(?:youtu\.be/)([^?&]+)",
-        r"(?:youtube\.com/shorts/)([^?&]+)",
-        r"(?:youtube\.com/embed/)([^?&]+)",
+        r"(?:youtube\.com/watch\?v=)([A-Za-z0-9_-]{11})",
+        r"(?:youtu\.be/)([A-Za-z0-9_-]{11})",
+        r"(?:youtube\.com/shorts/)([A-Za-z0-9_-]{11})",
+        r"(?:youtube\.com/embed/)([A-Za-z0-9_-]{11})",
     ]
 
     for pattern in patterns:
@@ -20,167 +19,61 @@ def extract_video_id(url):
     return None
 
 
+def get_transcript(video_id):
+    api = YouTubeTranscriptApi()
+
+    # New youtube-transcript-api API
+    if hasattr(api, "fetch"):
+        try:
+            transcript = api.fetch(
+                video_id,
+                languages=["fa", "en"]
+            )
+
+            return " ".join(
+                item.text for item in transcript
+            )
+        except Exception:
+            pass
+
+    # Compatibility with older versions
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(
+            video_id,
+            languages=["fa", "en"]
+        )
+
+        return " ".join(
+            item["text"] for item in transcript
+        )
+    except Exception:
+        return None
+
+
 def get_video_info(url):
     video_id = extract_video_id(url)
 
     if not video_id:
-        raise ValueError("لینک YouTube معتبر نیست.")
+        raise ValueError("Invalid YouTube URL")
 
-    title = "YouTube Video"
-    description = ""
+    # Get video metadata
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+    }
 
-    # فقط برای اطلاعات جانبی؛ شکست آن نباید Transcript را خراب کند.
-    try:
-        ydl_opts = {
-            "quiet": True,
-            "skip_download": True,
-            "socket_timeout": 10,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": [
-                        "web_embedded",
-                        "android_vr",
-                    ]
-                }
-            },
-        }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(
-                f"https://www.youtube.com/watch?v={video_id}",
-                download=False,
-            )
+    title = info.get("title") or "Untitled"
 
-        title = info.get("title") or title
-        description = info.get("description") or ""
-
-    except Exception as e:
-        print("YOUTUBE INFO WARNING:", str(e))
-
-    # Transcript مستقل از yt-dlp
     transcript = get_transcript(video_id)
 
     return {
         "title": title,
-        "description": description,
         "transcript": transcript,
+        "video_id": video_id,
+        "url": url,
     }
-
-
-def get_transcript(video_id):
-    print("========== YOUTUBE TRANSCRIPT DEBUG ==========")
-    print("VIDEO ID:", video_id)
-
-    try:
-        api = YouTubeTranscriptApi()
-
-        print("TRANSCRIPT API: fetching English transcript...")
-
-        transcript = api.fetch(
-            video_id,
-            languages=["en"],
-        )
-
-        print("TRANSCRIPT API: fetch SUCCESS")
-        print("TRANSCRIPT OBJECT TYPE:", type(transcript).__name__)
-        print(
-            "LANGUAGE:",
-            getattr(transcript, "language_code", None)
-        )
-        print(
-            "GENERATED:",
-            getattr(transcript, "is_generated", None)
-        )
-
-        parts = []
-
-        for item in transcript:
-            text = getattr(item, "text", None)
-
-            if text:
-                parts.append(text)
-
-        result = " ".join(parts)
-        result = re.sub(r"\\s+", " ", result).strip()
-
-        print(
-            "YOUTUBE TRANSCRIPT SUCCESS:",
-            len(result),
-            "characters"
-        )
-
-        if result:
-            print("==============================================")
-            return result
-
-        print("TRANSCRIPT RESULT IS EMPTY")
-        print("==============================================")
-
-    except Exception as e:
-        import traceback
-
-        print("!!!!!!!! YOUTUBE TRANSCRIPT ERROR !!!!!!!!")
-        print("ERROR TYPE:", type(e).__name__)
-        print("ERROR:", repr(e))
-        traceback.print_exc()
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-    fallback_languages = [
-        "fa",
-        "ar",
-        "tr",
-        "de",
-        "fr",
-        "es",
-    ]
-
-    for language in fallback_languages:
-        try:
-            print(
-                "TRANSCRIPT FALLBACK:",
-                language
-            )
-
-            api = YouTubeTranscriptApi()
-
-            transcript = api.fetch(
-                video_id,
-                languages=[language],
-            )
-
-            parts = []
-
-            for item in transcript:
-                text = getattr(item, "text", None)
-
-                if text:
-                    parts.append(text)
-
-            result = " ".join(parts)
-            result = re.sub(r"\\s+", " ", result).strip()
-
-            if result:
-                print(
-                    "YOUTUBE TRANSCRIPT SUCCESS:",
-                    language,
-                    len(result),
-                    "characters"
-                )
-                print("==============================================")
-                return result
-
-        except Exception as e:
-            import traceback
-
-            print(
-                "FALLBACK ERROR:",
-                language,
-                type(e).__name__,
-                repr(e)
-            )
-            traceback.print_exc()
-
-    print("YOUTUBE TRANSCRIPT FAILED COMPLETELY")
-    print("==============================================")
-
-    return None
