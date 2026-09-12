@@ -346,3 +346,25 @@ Give me {count} creative ideas about:
     ]
 
     return ask_ai(messages)
+
+
+def generate_prompt(text):
+    messages = [
+        {
+            "role": "user",
+            "content": f"""
+Create a high-quality AI prompt based on the user's request below.
+
+Preserve the user's original goal.
+Make the prompt clear, specific, detailed and useful.
+Do not add unrelated requirements.
+
+User request:
+{text}
+
+Return only the final prompt.
+"""
+        }
+    ]
+
+    return ask_ai(messages, personality="prompt_engineer")
