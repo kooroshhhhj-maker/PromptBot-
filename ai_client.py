@@ -45,7 +45,6 @@ def ask_deepseek(messages):
         data = response.json()
 
         print("DEEPSEEK STATUS:", response.status_code)
-        print("DEEPSEEK RESPONSE:", data)
 
         if response.ok and "choices" in data:
             print("DEEPSEEK SUCCESS")
@@ -83,7 +82,7 @@ def ask_huggingface(messages):
 
         data = response.json()
 
-        if isinstance(data, list) and "generated_text" in data[0]:
+        if isinstance(data, list) and data and "generated_text" in data[0]:
             return data[0]["generated_text"]
 
         print("HF FAILED:", data)
@@ -130,7 +129,57 @@ def ask_openrouter(messages):
     return None
 
 
+def detect_language(text):
+    """
+    Simple language detection for response-language control.
+    Returns a language instruction for the model.
+    """
+
+    if not text:
+        return "the same language as the user"
+
+    # Persian / Arabic-script detection
+    persian_chars = sum(
+        1 for c in text
+        if "\u0600" <= c <= "\u06ff"
+    )
+
+    # Japanese
+    japanese_chars = sum(
+        1 for c in text
+        if ("\u3040" <= c <= "\u30ff") or
+           ("\u4e00" <= c <= "\u9fff")
+    )
+
+    # Korean
+    korean_chars = sum(
+        1 for c in text
+        if "\uac00" <= c <= "\ud7af"
+    )
+
+    # Cyrillic
+    cyrillic_chars = sum(
+        1 for c in text
+        if "\u0400" <= c <= "\u04ff"
+    )
+
+    if persian_chars >= 2:
+        return "Persian (Farsi)"
+
+    if korean_chars >= 2:
+        return "Korean"
+
+    if japanese_chars >= 2:
+        return "Japanese"
+
+    if cyrillic_chars >= 2:
+        return "the same Cyrillic language used by the user"
+
+    return "the same language used by the user"
+
+
 def ask_ai(messages, personality="normal"):
+
     PERSONALITIES = {
         "normal": """
 You are PromptBot in Normal mode.
@@ -190,23 +239,59 @@ Focus on useful and accurate answers.
 """
     }
 
-    selected_personality = PERSONALITIES.get(personality, PERSONALITIES["normal"])
+    selected_personality = PERSONALITIES.get(
+        personality,
+        PERSONALITIES["normal"]
+    )
+
+    # Find the latest user message for language detection
+    latest_user_text = ""
+
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            content = message.get("content", "")
+
+            if isinstance(content, str):
+                latest_user_text = content
+            else:
+                latest_user_text = str(content)
+
+            break
+
+    response_language = detect_language(latest_user_text)
+
     system_prompt = f"""
 You are PromptBot, a fun and friendly AI assistant.
 
 {selected_personality}
 
-General rules:
+LANGUAGE RULE — VERY IMPORTANT:
+- Respond ONLY in {response_language}.
+- The response language must match the user's latest message.
+- Do NOT randomly switch languages.
+- Do NOT insert Chinese, Japanese, Korean, German, Polish, Thai, Arabic,
+  or any other language unless that language is explicitly being used by
+  the user or is absolutely required by the subject.
+- If the user writes Persian/Farsi, write entirely in natural Persian/Farsi.
+- If the user writes English, write entirely in natural English.
+- If the user writes German, write entirely in natural German.
+- If the user writes Japanese, write entirely in natural Japanese.
+- If the user writes Korean, write entirely in natural Korean.
+- Do not translate the user's message unless the user asks for translation.
+- Technical names, proper nouns, URLs and unavoidable programming/API
+  identifiers may remain in their original form.
+
+GENERAL RULES:
 - Speak naturally like a real person.
 - Use emojis where appropriate 😊✨🔥🤔💡.
-- Never use Markdown or symbols like ** ## __ *.
+- Never use Markdown formatting.
+- Do not use ** ## __ or decorative Markdown symbols.
 - Don't sound robotic or like a textbook.
 - Keep answers easy to read.
 - Use short paragraphs.
 - Don't overuse emojis.
 - Don't start every answer the same way.
 - Avoid repeating yourself.
-- If the answer is long, organize it with blank lines instead of bullet points.
 """
 
     messages = [
@@ -216,14 +301,14 @@ General rules:
         }
     ] + messages
 
-    # 1️⃣ OpenRouter
+    # 1 — OpenRouter
     if OPENROUTER_API_KEY:
         openrouter_answer = ask_openrouter(messages)
 
         if openrouter_answer:
             return openrouter_answer
 
-    # 2️⃣ Hugging Face fallback
+    # 2 — Hugging Face fallback
     if HF_TOKEN:
         hf_answer = ask_huggingface(messages)
 
@@ -231,6 +316,7 @@ General rules:
             return hf_answer
 
     return "❌ هیچ موتور AI در دسترس نیست."
+
 
 def write_text(text, style="professional"):
     messages = [
@@ -253,21 +339,6 @@ def brainstorm_ideas(text, count=5):
             "role": "user",
             "content": f"""
 Give me {count} creative ideas about:
-
-{text}
-"""
-        }
-    ]
-
-    return ask_ai(messages)
-
-
-def generate_prompt(text):
-    messages = [
-        {
-            "role": "user",
-            "content": f"""
-Create a professional AI image generation prompt for:
 
 {text}
 """
