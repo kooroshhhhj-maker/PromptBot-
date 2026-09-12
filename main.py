@@ -8,12 +8,13 @@ load_dotenv()
 
 import asyncio
 from flask import Flask, request
-from telegram import Update, ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
     BusinessConnectionHandler,
+    CallbackQueryHandler,
     ContextTypes,
     filters
 )
@@ -43,8 +44,77 @@ logger = logging.getLogger(__name__)
 chat_history = {}
 user_modes = {}
 user_edit_images = {}
+youtube_pending = {}
 image_analysis_types = {}
 user_personalities = {}
+
+
+async def youtube_summary_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    data = youtube_pending.get(user_id)
+
+    if not data:
+        await query.edit_message_text("❌ This YouTube request has expired. Please send the link again.")
+        return
+
+    title = data.get("title") or "YouTube Video"
+    transcript = data.get("transcript") or ""
+
+    if query.data == "yt_full":
+        style = (
+            "Create a complete, detailed summary of the video. "
+            "Cover all important information, explanations, examples, arguments, "
+            "and conclusions. Organize it clearly with headings and bullet points."
+        )
+    else:
+        style = (
+            "Create a short summary of the video. "
+            "Keep only the most important ideas and conclusions. "
+            "Be concise and easy to read."
+        )
+
+    prompt = [
+        {
+            "role": "system",
+            "content": (
+                "You are a professional YouTube video summarizer. "
+                "Use only the provided transcript. "
+                "Do not invent information. "
+                "Write the answer in the same language as the transcript."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f"{style}\n\n"
+                f"Video title: {title}\n\n"
+                f"Transcript:\n{transcript}"
+            )
+        }
+    ]
+
+    try:
+        await query.edit_message_text("🧠 Generating your summary...")
+
+        answer = ask_ai(
+            prompt,
+            personality=user_personalities.get(user_id, "normal")
+        )
+
+        await query.message.reply_text(
+            "🎬 " + title + "\n\n" + answer
+        )
+
+        youtube_pending.pop(user_id, None)
+
+    except Exception as e:
+        logger.exception("YouTube summary callback failed")
+        await query.message.reply_text(
+            f"❌ Error creating summary:\n{e}"
+        )
 
 # Telegram app (global)
 telegram_app = None
@@ -673,7 +743,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             info = get_video_info(text.strip())
             print("YOUTUBE HANDLER: AFTER get_video_info", flush=True)
 
-            title = info.get("title") or "Untitled"
+            title = info.get("title") or "YouTube Video"
             transcript = info.get("transcript")
 
             if not transcript:
@@ -682,44 +752,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
-            await update.message.reply_text(
-                "🧠 Transcript received. Summarizing..."
-            )
+            youtube_pending[user_id] = {
+                "title": title,
+                "transcript": transcript,
+            }
 
-            youtube_prompt = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a professional YouTube video summarizer. "
-                        "The text below is the real transcript of the video. "
-                        "Summarize it in the same language as the transcript. Do not translate it unless explicitly requested. "
-                        "Be accurate, organized, concise, and do not invent information. "
-                        "Structure the response as: Title, Summary, Key Points, Conclusion."
-
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Video title: {title}\n\n"
-                        f"Transcript:\n{transcript}"
-                    )
-                }
-            ]
-
-            answer = ask_ai(
-                youtube_prompt,
-                personality=user_personalities.get(user_id, "normal")
-            )
+            keyboard = [[
+                InlineKeyboardButton(
+                    "📄 Full Summary",
+                    callback_data="yt_full"
+                ),
+                InlineKeyboardButton(
+                    "📝 Short Summary",
+                    callback_data="yt_short"
+                )
+            ]]
 
             await update.message.reply_text(
-                "🎬 " + title + "\n\n" + answer
+                "🎬 Transcript received. How do you want the video summarized?",
+                reply_markup=InlineKeyboardMarkup(keyboard)
             )
 
         except Exception as e:
-            logger.exception("YouTube summarization failed")
+            logger.exception("YouTube processing failed")
             await update.message.reply_text(
-                  f"❌ Error processing video:\n{e}"
+                f"❌ Error processing video:\n{e}"
             )
 
         return
@@ -1136,6 +1193,7 @@ def main():
     app.add_handler(CommandHandler("clear", clear_memory))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("status", stats))
+    app.add_handler(CallbackQueryHandler(youtube_summary_callback, pattern=r"^yt_(full|short)$"))
 
     # Telegram Business / Secretary Mode
     app.add_handler(
