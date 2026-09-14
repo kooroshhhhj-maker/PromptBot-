@@ -1,4 +1,3 @@
-from video_generator import generate_video
 import logging
 import os
 import subprocess
@@ -138,7 +137,6 @@ TRANSLATIONS = {
         "welcome": "Hello 🤖\n\nWelcome to PromptBot.\nChoose an option:",
         "ai_chat": "💬 AI Chat",
         "create_image": "🎨 Create Image",
-      "create_video": "🎬 Create Video",
         "analyze_image": "🖼 Analyze Image",
         "edit_image": "✨ Edit Image",
         "write_text": "✍️ Write Text",
@@ -305,7 +303,6 @@ def get_menu_buttons(user_id):
     """Get menu buttons in user's language"""
     return [
         [get_text(user_id, "ai_chat"), get_text(user_id, "create_image")],
-        [get_text(user_id, "create_video")],
         [get_text(user_id, "analyze_image"), get_text(user_id, "edit_image")],
         [get_text(user_id, "write_text"), get_text(user_id, "brainstorm")],
         [get_text(user_id, "create_prompt"), get_text(user_id, "settings")],
@@ -424,8 +421,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     menu_text = {
         get_text(user_id, "ai_chat"): "chat",
         get_text(user_id, "create_image"): "image",
-        get_text(user_id, "create_video"): "video",
-        get_text(user_id, "analyze_image"): "analyze_image",
+          get_text(user_id, "analyze_image"): "analyze_image",
         get_text(user_id, "edit_image"): "edit_image",
         get_text(user_id, "write_text"): "writing",
         get_text(user_id, "brainstorm"): "ideas",
@@ -475,11 +471,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == get_text(user_id, "create_image"):
             await update.message.reply_text(
                 get_text(user_id, "image_desc")
-            )
-
-        elif text == get_text(user_id, "create_video"):
-            await update.message.reply_text(
-                "🎬 Send me a description of the video you want to create."
             )
 
         elif text == get_text(user_id, "analyze_image"):
@@ -788,35 +779,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"❌ Error processing video:\n{e}"
             )
 
-        return
-
-    # Video generation
-    if user_modes.get(user_id) == "video":
-        await update.message.reply_text(
-            "🎬 Generating video... Please wait."
-        )
-
-        video = generate_video(text)
-
-        if video:
-            print(
-                "VIDEO READY:",
-                video.name,
-                video.getbuffer().nbytes
-            )
-
-            video.seek(0)
-
-            await update.message.reply_video(
-                video=video,
-                caption="🎬 Video generated successfully!"
-            )
-        else:
-            await update.message.reply_text(
-                "❌ Video generation failed."
-            )
-
-        user_modes[user_id] = "chat"
         return
 
     # Image generation
